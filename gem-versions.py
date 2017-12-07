@@ -703,7 +703,7 @@ if __name__ == '__main__':
     # args = parser.parse_args(['-l'])
     # args = parser.parse_args(['-i', 'mcs-cp-ioc', '-x', 'lab'])
     # args = parser.parse_args([ '-x', 'sim', 'test'])
-    print args
+    # print args
 
     # tests(args)
     # exit(0)
