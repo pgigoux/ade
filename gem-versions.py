@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys
 import re
-from argparse import ArgumentParser
+from argparse import ArgumentParser, SUPPRESS
 from os import listdir, readlink
 from os import sep as directory_delimiter
 from os import curdir as current_directory
@@ -21,16 +21,6 @@ AREA_IOC = 'ioc'
 AREA_SUPPORT = 'support'
 AREA_LIST = [AREA_IOC, AREA_SUPPORT]
 
-# Directory names
-ROOT_DIR = join(current_directory, 'gem_sw')  # testing
-# ROOT_DIR = join(directory_delimiter, 'gem_sw')  # production
-PROD_DIR = join(ROOT_DIR, MATURITY_PROD)
-WORK_DIR = join(ROOT_DIR, MATURITY_WORK)
-REDIRECTOR_DIR = join(PROD_DIR, 'redirector')
-
-# Software maturity/directory mapping
-maturity_directory = {MATURITY_PROD: PROD_DIR, MATURITY_WORK: WORK_DIR}
-
 
 def default_version(version):
     """
@@ -47,10 +37,12 @@ def get_epics_versions(maturity):
     """
     Return the list of EPICS versions available in the production directory.
     It is assumed that the EPICS directory start with an 'R'
+    :param maturity
+    :type maturity: str
     :return: list of EPICS versions
     :rtype: list
     """
-    directory = PROD_DIR if maturity == MATURITY_PROD else WORK_DIR
+    directory = Config.maturity_directory(maturity)
     if isdir(directory):
         return [f for f in listdir(directory) if re.search('^R', f) and isdir(join(directory, f))]
     else:
@@ -86,7 +78,7 @@ def get_dependencies(file_name, prod_support, work_support):
             lst = r_val.split(directory_delimiter)
             if len(lst) > 1:
                 if MATURITY_WORK in lst:
-                    epics = lst[-2]
+                    epics = lst[-3]
                     name = lst[-1]
                     version = 'work'
                     # print '=', name, version
@@ -116,7 +108,8 @@ def get_support_module_list(epics_version, maturity):
     :return: list of support modules available for the give EPICS version
     :rtype: list
     """
-    directory = PROD_DIR if maturity == MATURITY_PROD else WORK_DIR
+    # print 'get_support_module_list', epics_version, maturity
+    directory = Config.maturity_directory(maturity)
     # print directory
     if isdir(directory):
         return listdir(join(directory, epics_version, 'support'))
@@ -124,10 +117,74 @@ def get_support_module_list(epics_version, maturity):
         raise IOError('Directory ' + directory + ' does not exist')
 
 
+class Config:
+    """
+    Class used to handle the location of the prod, work and redirector directories.
+    It was introduced to change the location of these directories at run time to facilitate
+    running this program against directories containing test data.
+    """
+
+    # Predefined root directories.
+    DEFAULT_DIR = join(directory_delimiter, 'gem_sw')  # production
+    ROOT_DIR_CP = join(current_directory, 'gem_sw_cp')  # test cp
+    ROOT_DIR_MK = join(current_directory, 'gem_sw_mk')  # test mk
+
+    # Root directory (used by other routines in this class)
+    root_dir = DEFAULT_DIR
+
+    def __init__(self):
+        pass
+
+    @classmethod
+    def set_root_directory(cls, root_directory):
+        """
+        Set the root directory to a location other than the default.
+        :param root_directory: software root directory
+        :type root_directory: str
+        :return: None
+        """
+        cls.root_dir = root_directory
+
+    @classmethod
+    def prod_dir(cls):
+        """
+        :return: production directory
+        :rtype: str
+        """
+        return join(cls.root_dir, MATURITY_PROD)
+
+    @classmethod
+    def work_dir(cls):
+        """
+        :return: work directory
+        :rtype: str
+        """
+        return join(cls.root_dir, MATURITY_WORK)
+
+    @classmethod
+    def redirector_dir(cls):
+        """
+        :return: redirector directory
+        :rtype: str
+        """
+        return join(cls.prod_dir(), 'redirector')
+
+    @classmethod
+    def maturity_directory(cls, maturity):
+        """
+        Return the directory for a given software maturity
+        :param maturity: software maturity (MATURITY_PROD or MATURITY_WORK)
+        :type maturity: str
+        :return: production or work directory
+        :rtype: str
+        """
+        return cls.prod_dir() if maturity == MATURITY_PROD else cls.work_dir()
+
+
 class Macro:
     """
     Class used to encapsulate the routines in charge of expanding
-    a make macro of the form $(macro).
+    a make file macro of the form $(macro).
     """
 
     def __init__(self):
@@ -143,7 +200,7 @@ class Macro:
         """
         Extract macro name from a macro reference.
         It strips the dollar sign and the parentheses from the definition.
-        :param macro: macro definition (e.g. $(top))
+        :param macro: macro definition (e.g. $(EPICS_RELEASE))
         :type macro: str
         :return: macro name (e.g. EPICS_RELEASE)
         :rtype: str
@@ -153,9 +210,10 @@ class Macro:
     def _replace_macros(self, line):
         """
         Replace macros in a line.
-        :param line: line to replace macros
+        :param line: line where macros should be replaced
         :type line: str
-        :return:
+        :return: line with macros replaced
+        :rtype: str
         """
         # print "_replace_macros", line
         # Look for matches only if there are macros in the dictionary
@@ -252,15 +310,16 @@ class Redirector:
         :rtype: list
         """
         # print 'get_redirector_links', exclude_list
-        if isdir(REDIRECTOR_DIR):
-            file_list = [f for f in listdir(REDIRECTOR_DIR) if islink(join(REDIRECTOR_DIR, f))]
+        redirector_directory = Config.redirector_dir()
+        if isdir(redirector_directory):
+            file_list = [f for f in listdir(redirector_directory) if islink(join(redirector_directory, f))]
             if exclude_list:
                 m = re.compile('|'.join(exclude_list))
                 file_list = [f for f in file_list if m.search(f) is None]
             # print '==', file_list
             return sorted(file_list)
         else:
-            raise IOError('Directory ' + REDIRECTOR_DIR + ' does not exist')
+            raise IOError('Directory ' + redirector_directory + ' does not exist')
 
     @staticmethod
     def _get_ioc_link(ioc_name):
@@ -272,7 +331,7 @@ class Redirector:
         :return: file referenced by the link
         :rtype: str
         """
-        full_file_name = join(REDIRECTOR_DIR, ioc_name)
+        full_file_name = join(Config.redirector_dir(), ioc_name)
         if islink(full_file_name):
             return readlink(full_file_name)
         else:
@@ -341,11 +400,12 @@ class IOC:
         :return: release file name
         :rtype: str
         """
+        directory = Config.maturity_directory(self.maturity)
         if self.maturity == MATURITY_PROD:
-            release_file = join(maturity_directory[self.maturity], self.epics, AREA_IOC, self.target_name, self.site,
+            release_file = join(directory, self.epics, AREA_IOC, self.target_name, self.site,
                                 self.version, 'configure', 'RELEASE')
         else:
-            release_file = join(maturity_directory[self.maturity], self.epics, AREA_IOC, self.target_name, self.site,
+            release_file = join(directory, self.epics, AREA_IOC, self.target_name, self.site,
                                 'configure', 'RELEASE')
         return release_file
 
@@ -357,7 +417,7 @@ class IOC:
         """
         # print 'get_ioc_versions', ioc_target_name, epics_version, ioc_site, maturity
         if self.maturity == MATURITY_PROD:
-            directory = join(PROD_DIR, self.epics, 'ioc', self.target_name, self.site)
+            directory = join(Config.prod_dir(), self.epics, 'ioc', self.target_name, self.site)
             # print directory
             if isdir(directory):
                 return listdir(directory)
@@ -375,7 +435,7 @@ class IOC:
         """
         # print 'get_ioc_dependencies', ioc_target_name
         release_file = self._get_ioc_release_file()
-        # print release_file
+        # print '-', release_file
         support_list = get_dependencies(release_file,
                                         get_support_module_list(self.epics, MATURITY_PROD),
                                         get_support_module_list(self.epics, MATURITY_WORK))
@@ -420,11 +480,12 @@ class SupportModule:
         :return: release file name
         :rtype: str
         """
+        directory = Config.maturity_directory(self.maturity)
         if self.maturity == MATURITY_PROD:
-            release_file = join(maturity_directory[self.maturity], self.epics, AREA_SUPPORT, self.name,
+            release_file = join(directory, self.epics, AREA_SUPPORT, self.name,
                                 self.version, 'configure', 'RELEASE')
         else:
-            release_file = join(maturity_directory[self.maturity], self.epics, AREA_SUPPORT, self.name,
+            release_file = join(directory, self.epics, AREA_SUPPORT, self.name,
                                 'configure', 'RELEASE')
         return release_file
 
@@ -477,7 +538,6 @@ def print_ioc_dependencies(ioc_name, argv):
     and EPICS BSP for the IOC, and the list of support modules and versions.
     :param ioc_name: IOC name (e.g. mcs-cp-ioc)
     :type ioc_name: str
-    :param exclude_list: list of IOCs to exclude
     :param argv: command line arguments
     :type argv: argparse.Namespace
     :return None
@@ -528,9 +588,10 @@ def print_support_module_dependencies(support_module_name, argv):
                 else:
                     ioc_dict[sup.id] = [ioc]
 
-    # Print the output
+    # Print the support module dependencies first, followed by the ioc's that use the support module
     for sup_id in sorted(ioc_dict):
         sup = sup_dict[sup_id]
+        # print '--', sup
         assert (isinstance(sup, SupportModule))
         print sup.name, sup.version, sup.epics
         for dep in sup.get_support_module_dependencies():
@@ -549,35 +610,44 @@ def tests(argv):
     """
 
     # Test - print routines
-    # print_ioc_summary(False, args)
-    # print_support_module_dependencies(args.module_name, args)
-    # print_support_module_dependencies('iocStats', args)
+    print_ioc_summary(False, args)
+    print_support_module_dependencies(args.module_name, args)
+    print_support_module_dependencies('iocStats', args)
 
     # Test - general routines
-    # print 'default_version', default_version('1.0')
-    # print 'default_version', default_version('')
-    # print 'get_epics_versions', get_epics_versions(MATURITY_PROD)
-    # print 'get_epics_versions', get_epics_versions(MATURITY_WORK)
-    # print 'get_support_module_list', get_support_module_list('R3.14.12.6', MATURITY_PROD)
-    # print 'get_support_module_list', get_support_module_list('R3.14.12.4', MATURITY_WORK)
-    # print 'get_dependencies', \
-    #     get_dependencies('./gem_sw/prod/R3.14.12.6/ioc/mcs/cp/1-2-BR314/configure/RELEASE',
-    #                      get_support_module_list('R3.14.12.6', MATURITY_PROD),
-    #                      get_support_module_list('R3.14.12.6', MATURITY_WORK))
-    # print 'get_dependencies', \
-    #     get_dependencies('./gem_sw/prod/R3.14.12.6/support/iocStats/3-1-14-3-BR314/configure/RELEASE',
-    #                      get_support_module_list('R3.14.12.6', MATURITY_PROD),
-    #                      get_support_module_list('R3.14.12.6', MATURITY_WORK))
+    print 'default_version', default_version('1.0')
+    print 'default_version', default_version('')
+    print 'get_epics_versions', get_epics_versions(MATURITY_PROD)
+    print 'get_epics_versions', get_epics_versions(MATURITY_WORK)
+    print 'get_support_module_list', get_support_module_list('R3.14.12.6', MATURITY_PROD)
+    print 'get_support_module_list', get_support_module_list('R3.14.12.4', MATURITY_WORK)
+    print 'get_dependencies', \
+        get_dependencies('./gem_sw/prod/R3.14.12.6/ioc/mcs/cp/1-2-BR314/configure/RELEASE',
+                         get_support_module_list('R3.14.12.6', MATURITY_PROD),
+                         get_support_module_list('R3.14.12.6', MATURITY_WORK))
+    print 'get_dependencies', \
+        get_dependencies('./gem_sw/prod/R3.14.12.6/support/iocStats/3-1-14-3-BR314/configure/RELEASE',
+                         get_support_module_list('R3.14.12.6', MATURITY_PROD),
+                         get_support_module_list('R3.14.12.6', MATURITY_WORK))
+
+    # Test - Config
+    for directory in (Config.ROOT_DIR_CP, Config.ROOT_DIR_MK):
+        Config.set_root_directory(directory)
+        print 'redirector dir', Config.redirector_dir()
+        print 'prod dir', Config.prod_dir()
+        print 'work dir', Config.work_dir()
+        print 'mat_dir prod', Config.maturity_directory(MATURITY_PROD)
+        print 'mat_dir work', Config.maturity_directory(MATURITY_WORK)
 
     # Test - redirector
-    # print Redirector()
-    # print Redirector([])
-    # print Redirector(['lab'])
+    print Redirector()
+    print Redirector([])
+    print Redirector(['lab'])
 
-    # rd = Redirector()
-    # print 'get_ioc_names', rd.get_ioc_names()
-    # print 'get_ioc_list', rd.get_ioc_list()
-    # print 'get_ioc', rd.get_ioc('mcs-cp-ioc')
+    rd = Redirector()
+    print 'get_ioc_names', rd.get_ioc_names()
+    print 'get_ioc_list', rd.get_ioc_list()
+    print 'get_ioc', rd.get_ioc('mcs-cp-ioc')
 
     # Test - IOC
 
@@ -617,9 +687,16 @@ if __name__ == '__main__':
                         dest='module_name',
                         help='',
                         default=[])
+    parser.add_argument('-r', '--root',
+                        action='store',
+                        nargs=1,
+                        dest='root',
+                        default='',
+                        help=SUPPRESS)
 
     args = parser.parse_args(sys.argv[1:])
     # args = parser.parse_args(['-h'])
+    args = parser.parse_args(['iocStats', '-r', Config.ROOT_DIR_CP])
     # args = parser.parse_args(['-i', 'mcs-cp-ioc'])
     # args = parser.parse_args(['-i', 'labvme6-sbf-ioc'])
     # args = parser.parse_args(['-l'])
@@ -629,8 +706,13 @@ if __name__ == '__main__':
     # tests(args)
     # exit(0)
 
+    if args.root:
+        Config.set_root_directory(args.root)
+
+    Config.set_root_directory(Config.ROOT_DIR_MK)
+
     # Abort if the redirector, production and work directories do not exist
-    if not (isdir(REDIRECTOR_DIR) and isdir(PROD_DIR) and isdir(WORK_DIR)):
+    if not (isdir(Config.redirector_dir()) and isdir(Config.prod_dir()) and isdir(Config.work_dir())):
         print 'No redirector, prod or work directory found'
         exit(0)
 
