@@ -524,7 +524,7 @@ def print_ioc_summary(print_links, argv):
     # print '-', rd.get_ioc_names()
     format_string_links = '{0:' + str(len_max) + '}  {1}'
     format_string_details = '{0:' + str(len_max) + '}  {1:5} {2:14} {3:15} {4:13} {5}'
-    for ioc in rd.get_ioc_list():
+    for ioc in sorted(rd.get_ioc_list(), key=lambda x: x.name):
         # print ioc
         if print_links:
             print format_string_links.format(ioc.name, ioc.link)
@@ -544,7 +544,7 @@ def print_ioc_dependencies(ioc_name, argv):
     """
     # print 'print_ioc_dependencies', ioc_name
     rd = Redirector(argv.exclude)
-    if ioc_name in rd.get_ioc_names():
+    if ioc_name in sorted(rd.get_ioc_names()):
         ioc = rd.get_ioc(ioc_name)
         print '{0} {1} {2} {3} {4}'.format(ioc.name, default_version(ioc.version), ioc.boot, ioc.epics, ioc.bsp)
         for support_module in ioc.get_ioc_dependencies():
@@ -594,7 +594,7 @@ def print_support_module_dependencies(support_module_name, argv):
         # print '--', sup
         assert (isinstance(sup, SupportModule))
         print sup.name, sup.version, sup.epics
-        for dep in sup.get_support_module_dependencies():
+        for dep in sorted(sup.get_support_module_dependencies(), key=lambda x: x.name):
             print '   {0:16} {1:16} {2}'.format(dep.name, default_version(dep.version), dep.epics)
         for ioc in sorted(ioc_dict[sup_id], key=lambda x: x.name):
             assert (isinstance(ioc, IOC))
@@ -696,20 +696,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args(sys.argv[1:])
     # args = parser.parse_args(['-h'])
-    args = parser.parse_args(['iocStats', '-r', Config.ROOT_DIR_CP])
+    # args = parser.parse_args(['-r', Config.ROOT_DIR_CP])
+    # args = parser.parse_args(['iocStats', '-r', Config.ROOT_DIR_CP])
     # args = parser.parse_args(['-i', 'mcs-cp-ioc'])
     # args = parser.parse_args(['-i', 'labvme6-sbf-ioc'])
     # args = parser.parse_args(['-l'])
     # args = parser.parse_args(['-i', 'mcs-cp-ioc', '-x', 'lab'])
-    # print args
+    # args = parser.parse_args([ '-x', 'sim', 'test'])
+    print args
 
     # tests(args)
     # exit(0)
 
     if args.root:
-        Config.set_root_directory(args.root)
-
-    Config.set_root_directory(Config.ROOT_DIR_MK)
+        Config.set_root_directory(args.root[0])
 
     # Abort if the redirector, production and work directories do not exist
     if not (isdir(Config.redirector_dir()) and isdir(Config.prod_dir()) and isdir(Config.work_dir())):
