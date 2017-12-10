@@ -696,14 +696,14 @@ if __name__ == '__main__':
     args = parser.parse_args(sys.argv[1:])
 
     # Test - force site
-    Config.root_dir = Config.ROOT_DIR_CP
+    # Config.root_dir = Config.ROOT_DIR_CP
     # Config.root_dir = Config.ROOT_DIR_MK
 
     # Test - force command line arguments
     # args = parser.parse_args(['-h'])
     # args = parser.parse_args(['iocStats'])
     # args = parser.parse_args(['pvload'])
-    args = parser.parse_args(['wsWeb'])
+    # args = parser.parse_args(['wsWeb'])
     # args = parser.parse_args(['-i', 'mcs-cp-ioc'])
     # args = parser.parse_args(['-i', 'labvme6-sbf-ioc'])
     # args = parser.parse_args(['-l'])
