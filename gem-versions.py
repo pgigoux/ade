@@ -509,12 +509,10 @@ class SupportModule:
 
 # Report routines
 
-# def print_ioc_summary(print_links, argv):
+# def print_ioc_summary(argv):
 def print_ioc_summary(argv):
     """
     Print version information for all IOC's in the redirector directory
-    :param print_links: Print raw links (same output as configure-ioc -L)
-    :type print_links: bool
     :param argv: command line arguments
     :type argv: Namespace
     :return None
@@ -532,33 +530,29 @@ def print_ioc_summary(argv):
             print format_string_details.format(ioc.name, ioc.maturity, ioc.epics, ioc.bsp, ioc.version, ioc.boot)
 
 
-def print_ioc_dependencies(ioc_name, argv):
+def print_ioc_dependencies(argv):
     """
     Print IOC and dependency information. It will print the IOC version, EPICS version
     and EPICS BSP for the IOC, and the list of support modules and versions.
-    :param ioc_name: IOC name (e.g. mcs-cp-ioc)
-    :type ioc_name: str
     :param argv: command line arguments
     :type argv: Namespace
     :return None
     """
-    # print 'print_ioc_dependencies', ioc_name
+    # print 'print_ioc_dependencies', argv.name
     rd = Redirector(argv.exclude)
-    if ioc_name in rd.get_ioc_names():
-        ioc = rd.get_ioc(ioc_name)
+    if argv.name in rd.get_ioc_names():
+        ioc = rd.get_ioc(argv.name)
         print '{0} {1} {2} {3} {4}'.format(ioc.name, default_version(ioc.version), ioc.boot, ioc.epics, ioc.bsp)
         for support_module in ioc.get_ioc_dependencies():
             print '   {0:16} {1}'.format(support_module.name, support_module.version)
     else:
-        print ioc_name + ' not found'
+        print argv.name + ' not found'
 
 
-def print_support_module_dependencies(support_module_name, argv):
+def print_support_module_dependencies(argv):
     """
     Print the support module dependencies to other support modules, as well as the IOC's
     that depend on the support module.
-    :param support_module_name: support module name
-    :type support_module_name: str
     :param argv: command line arguments
     :type argv: Namespace
     :return None
@@ -583,7 +577,7 @@ def print_support_module_dependencies(support_module_name, argv):
             sup_dict[sup.id] = sup  # repeated entries are discarded at this point
             assert (isinstance(sup, SupportModule))
             # print '  ', sup
-            if sup.name == support_module_name:
+            if sup.name == argv.name:
                 if sup.id in ioc_dict:
                     ioc_dict[sup.id].append(ioc)
                 else:
@@ -603,7 +597,7 @@ def print_support_module_dependencies(support_module_name, argv):
                 print '   {0:16} {1:16} {2}'.format(ioc.name, default_version(ioc.version), ioc.epics)
             print
     else:
-        print 'support module \"' + support_module_name + '\" does not exist or is not used by any (active) IOC\'s'
+        print 'support module \"' + argv.name + '\" does not exist or is not used by any (active) IOC\'s'
 
 
 def command_line_arguments(argv):
@@ -674,10 +668,10 @@ if __name__ == '__main__':
 
     if args.name:
         if args.area == AREA_IOC:
-            print_ioc_dependencies(args.name, args)
+            print_ioc_dependencies(args)
         else:
-            print_support_module_dependencies(args.name, args)
+            print_support_module_dependencies(args)
     else:
-        print_ioc_summary(args.links, args)
+        print_ioc_summary(args)
 
     exit(0)
