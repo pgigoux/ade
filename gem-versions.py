@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys
 import re
-from argparse import ArgumentParser, SUPPRESS
+from argparse import ArgumentParser, SUPPRESS, Namespace
 from os import listdir, readlink
 from os import sep as directory_delimiter
 from os import curdir as current_directory
@@ -288,8 +288,7 @@ class Redirector:
         :rtype: list
         """
         # print 'get_ioc_names', self.ioc_name_list
-        # return self.ioc_name_list
-        return self.ioc_dict.keys()
+        return sorted(self.ioc_dict.keys())
 
     def get_ioc_list(self):
         """
@@ -298,7 +297,7 @@ class Redirector:
         :return: list of IOC objects
         :rtype: list
         """
-        return self.ioc_dict.values()
+        return sorted(self.ioc_dict.values(), key=lambda x: x.name)
 
     @staticmethod
     def _get_redirector_links(exclude_list):
@@ -441,7 +440,7 @@ class IOC:
                                         get_support_module_list(self.epics, MATURITY_WORK))
         # print '+', self.name, support_list
         if support_list:
-            return [SupportModule(t[0], t[1], t[2], t[3]) for t in support_list]
+            return [SupportModule(t[0], t[1], t[2], t[3]) for t in sorted(support_list)]
         else:
             return []  # no dependencies
 
@@ -507,16 +506,15 @@ class SupportModule:
             return []  # no dependencies
 
 
-# Output routines
+# Report routines
 
 def print_ioc_summary(print_links, argv):
     """
     Print version information for all IOC's in the redirector directory
     :param print_links: Print raw links (same output as configure-ioc -L)
     :type print_links: bool
-    :param exclude_list: list of IOCs to exclude
     :param argv: command line arguments
-    :type argv: argparse.Namespace
+    :type argv: Namespace
     :return None
     """
     rd = Redirector(argv.exclude)
@@ -524,7 +522,7 @@ def print_ioc_summary(print_links, argv):
     # print '-', rd.get_ioc_names()
     format_string_links = '{0:' + str(len_max) + '}  {1}'
     format_string_details = '{0:' + str(len_max) + '}  {1:5} {2:14} {3:15} {4:13} {5}'
-    for ioc in sorted(rd.get_ioc_list(), key=lambda x: x.name):
+    for ioc in rd.get_ioc_list():
         # print ioc
         if print_links:
             print format_string_links.format(ioc.name, ioc.link)
@@ -539,12 +537,12 @@ def print_ioc_dependencies(ioc_name, argv):
     :param ioc_name: IOC name (e.g. mcs-cp-ioc)
     :type ioc_name: str
     :param argv: command line arguments
-    :type argv: argparse.Namespace
+    :type argv: Namespace
     :return None
     """
     # print 'print_ioc_dependencies', ioc_name
     rd = Redirector(argv.exclude)
-    if ioc_name in sorted(rd.get_ioc_names()):
+    if ioc_name in rd.get_ioc_names():
         ioc = rd.get_ioc(ioc_name)
         print '{0} {1} {2} {3} {4}'.format(ioc.name, default_version(ioc.version), ioc.boot, ioc.epics, ioc.bsp)
         for support_module in ioc.get_ioc_dependencies():
@@ -560,13 +558,14 @@ def print_support_module_dependencies(support_module_name, argv):
     :param support_module_name: support module name
     :type support_module_name: str
     :param argv: command line arguments
-    :type argv: argparse.Namespace
+    :type argv: Namespace
     :return None
     """
     # print 'print_support_module_dependencies', support_module_name
 
     # The ioc dictionary is used to create a cross reference between support modules and IOC objects.
-    # It is indexed by the support module id. There won't be repeated dependencies.
+    # Each entry is indexed by the support module id and contains the list of IOC's using the support module.
+    # Repeated dependencies are prevented by not appending them to the list.
     ioc_dict = {}
 
     # The support module dictionary is used to map support module id's with SupportModule objects.
@@ -594,9 +593,9 @@ def print_support_module_dependencies(support_module_name, argv):
         # print '--', sup
         assert (isinstance(sup, SupportModule))
         print sup.name, sup.version, sup.epics
-        for dep in sorted(sup.get_support_module_dependencies(), key=lambda x: x.name):
+        for dep in sup.get_support_module_dependencies():
             print '   {0:16} {1:16} {2}'.format(dep.name, default_version(dep.version), dep.epics)
-        for ioc in sorted(ioc_dict[sup_id], key=lambda x: x.name):
+        for ioc in ioc_dict[sup_id]:
             assert (isinstance(ioc, IOC))
             print '   {0:16} {1:16} {2}'.format(ioc.name, default_version(ioc.version), ioc.epics)
         print
@@ -605,8 +604,8 @@ def print_support_module_dependencies(support_module_name, argv):
 def tests(argv):
     """
     :param argv: command line arguments
-    :type argv: argparse.Namespace
-    :return:
+    :type argv: Namespace
+    :return: None
     """
 
     # Test - print routines
@@ -695,9 +694,16 @@ if __name__ == '__main__':
                         help=SUPPRESS)
 
     args = parser.parse_args(sys.argv[1:])
+
+    # Test - force site
+    Config.root_dir = Config.ROOT_DIR_CP
+    # Config.root_dir = Config.ROOT_DIR_MK
+
+    # Test - force command line arguments
     # args = parser.parse_args(['-h'])
-    # args = parser.parse_args(['-r', Config.ROOT_DIR_CP])
-    # args = parser.parse_args(['iocStats', '-r', Config.ROOT_DIR_CP])
+    # args = parser.parse_args(['iocStats'])
+    # args = parser.parse_args(['pvload'])
+    args = parser.parse_args(['wsWeb'])
     # args = parser.parse_args(['-i', 'mcs-cp-ioc'])
     # args = parser.parse_args(['-i', 'labvme6-sbf-ioc'])
     # args = parser.parse_args(['-l'])
