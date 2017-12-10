@@ -114,7 +114,8 @@ def get_support_module_list(epics_version, maturity):
     if isdir(directory):
         return listdir(join(directory, epics_version, 'support'))
     else:
-        raise IOError('Directory ' + directory + ' does not exist')
+        # raise IOError('Directory ' + directory + ' does not exist')
+        return []
 
 
 class Config:
@@ -279,7 +280,7 @@ class Redirector:
         :return: IOC object
         :rtype IOC
         """
-        return self.ioc_dict[ioc_name]
+        return self.ioc_dict[ioc_name] if ioc_name in self.ioc_dict else None
 
     def get_ioc_names(self):
         """
@@ -508,7 +509,8 @@ class SupportModule:
 
 # Report routines
 
-def print_ioc_summary(print_links, argv):
+# def print_ioc_summary(print_links, argv):
+def print_ioc_summary(argv):
     """
     Print version information for all IOC's in the redirector directory
     :param print_links: Print raw links (same output as configure-ioc -L)
@@ -524,7 +526,7 @@ def print_ioc_summary(print_links, argv):
     format_string_details = '{0:' + str(len_max) + '}  {1:5} {2:14} {3:15} {4:13} {5}'
     for ioc in rd.get_ioc_list():
         # print ioc
-        if print_links:
+        if argv.links:
             print format_string_links.format(ioc.name, ioc.link)
         else:
             print format_string_details.format(ioc.name, ioc.maturity, ioc.epics, ioc.bsp, ioc.version, ioc.boot)
