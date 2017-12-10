@@ -604,62 +604,21 @@ def print_support_module_dependencies(support_module_name, argv):
         print 'support module \"' + support_module_name + '\" does not exist or is not used by any (active) IOC\'s'
 
 
-def tests(argv):
+def command_line_arguments(argv):
     """
-    :param argv: command line arguments
-    :type argv: Namespace
-    :return: None
+    Process command line arguments
+    :param argv: command line arguments from sys.argv[1:]
+    :type argv: list
+    :return: argparse Namespace
+    :rtype: Namespace
     """
 
-    # Test - print routines
-    print_ioc_summary(False, args)
-    print_support_module_dependencies(args.module_name, args)
-    print_support_module_dependencies('iocStats', args)
-
-    # Test - general routines
-    print 'default_version', default_version('1.0')
-    print 'default_version', default_version('')
-    print 'get_epics_versions', get_epics_versions(MATURITY_PROD)
-    print 'get_epics_versions', get_epics_versions(MATURITY_WORK)
-    print 'get_support_module_list', get_support_module_list('R3.14.12.6', MATURITY_PROD)
-    print 'get_support_module_list', get_support_module_list('R3.14.12.4', MATURITY_WORK)
-    print 'get_dependencies', \
-        get_dependencies('./gem_sw/prod/R3.14.12.6/ioc/mcs/cp/1-2-BR314/configure/RELEASE',
-                         get_support_module_list('R3.14.12.6', MATURITY_PROD),
-                         get_support_module_list('R3.14.12.6', MATURITY_WORK))
-    print 'get_dependencies', \
-        get_dependencies('./gem_sw/prod/R3.14.12.6/support/iocStats/3-1-14-3-BR314/configure/RELEASE',
-                         get_support_module_list('R3.14.12.6', MATURITY_PROD),
-                         get_support_module_list('R3.14.12.6', MATURITY_WORK))
-
-    # Test - Config
-    for directory in (Config.ROOT_DIR_CP, Config.ROOT_DIR_MK):
-        Config.set_root_directory(directory)
-        print 'redirector dir', Config.redirector_dir()
-        print 'prod dir', Config.prod_dir()
-        print 'work dir', Config.work_dir()
-        print 'mat_dir prod', Config.maturity_directory(MATURITY_PROD)
-        print 'mat_dir work', Config.maturity_directory(MATURITY_WORK)
-
-    # Test - redirector
-    print Redirector()
-    print Redirector([])
-    print Redirector(['lab'])
-
-    rd = Redirector()
-    print 'get_ioc_names', rd.get_ioc_names()
-    print 'get_ioc_list', rd.get_ioc_list()
-    print 'get_ioc', rd.get_ioc('mcs-cp-ioc')
-
-    # Test - IOC
-
-
-if __name__ == '__main__':
-
-    # Process command line arguments
+    # Define text that will be printed at the end of the '-h' option
     epilog_text = """The default area is '""" + AREA_SUPPORT + """'""" + \
                   """. The list of all IOC's in the redirector directory will be printed if no module is scpecified."""
+
     parser = ArgumentParser(epilog=epilog_text)
+
     parser.add_argument('-l', '--links',
                         action='store_true',
                         dest='links',
@@ -686,7 +645,7 @@ if __name__ == '__main__':
                         default=[])
     parser.add_argument(action='store',
                         nargs='?',
-                        dest='module_name',
+                        dest='name',
                         help='',
                         default=[])
     parser.add_argument('-r', '--root',
@@ -696,41 +655,26 @@ if __name__ == '__main__':
                         default='',
                         help=SUPPRESS)
 
-    args = parser.parse_args(sys.argv[1:])
+    return parser.parse_args(argv)
 
-    # Test - force site
-    # Config.root_dir = Config.ROOT_DIR_CP
-    # Config.root_dir = Config.ROOT_DIR_MK
 
-    # Test - force command line arguments
-    # args = parser.parse_args(['-h'])
-    # args = parser.parse_args(['iocStats'])
-    # args = parser.parse_args(['pvload'])
-    # args = parser.parse_args(['wsWeb'])
-    # args = parser.parse_args(['-i', 'mcs-cp-ioc'])
-    # args = parser.parse_args(['-i', 'labvme6-sbf-ioc'])
-    # args = parser.parse_args(['-l'])
-    # args = parser.parse_args(['-i', 'mcs-cp-ioc', '-x', 'lab'])
-    # args = parser.parse_args([ '-x', 'sim', 'test'])
-    # print args
+if __name__ == '__main__':
 
-    # tests(args)
-    # exit(0)
+    args = command_line_arguments(sys.argv[1:])
 
     if args.root:
         Config.set_root_directory(args.root[0])
 
-    # Abort if the redirector, production and work directories do not exist
+    # Abort if the redirector, production and work directories are not found
     if not (isdir(Config.redirector_dir()) and isdir(Config.prod_dir()) and isdir(Config.work_dir())):
         print 'No redirector, prod or work directory found'
-        exit(0)
+        exit(1)
 
-    if args.module_name:
+    if args.name:
         if args.area == AREA_IOC:
-            print_ioc_dependencies(args.module_name, args)
+            print_ioc_dependencies(args.name, args)
         else:
-            print_support_module_dependencies(args.module_name, args)
-            pass
+            print_support_module_dependencies(args.name, args)
     else:
         print_ioc_summary(args.links, args)
 
