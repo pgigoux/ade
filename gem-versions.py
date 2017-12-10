@@ -587,18 +587,21 @@ def print_support_module_dependencies(support_module_name, argv):
                 else:
                     ioc_dict[sup.id] = [ioc]
 
-    # Print the support module dependencies first, followed by the ioc's that use the support module
-    for sup_id in sorted(ioc_dict):
-        sup = sup_dict[sup_id]
-        # print '--', sup
-        assert (isinstance(sup, SupportModule))
-        print sup.name, sup.version, sup.epics
-        for dep in sup.get_support_module_dependencies():
-            print '   {0:16} {1:16} {2}'.format(dep.name, default_version(dep.version), dep.epics)
-        for ioc in ioc_dict[sup_id]:
-            assert (isinstance(ioc, IOC))
-            print '   {0:16} {1:16} {2}'.format(ioc.name, default_version(ioc.version), ioc.epics)
-        print
+    if ioc_dict:
+        # Print the support module dependencies first, followed by the ioc's that use the support module
+        for sup_id in sorted(ioc_dict):
+            sup = sup_dict[sup_id]
+            # print '--', sup
+            assert (isinstance(sup, SupportModule))
+            print sup.name, sup.version, sup.epics
+            for dep in sup.get_support_module_dependencies():
+                print '   {0:16} {1:16} {2}'.format(dep.name, default_version(dep.version), dep.epics)
+            for ioc in ioc_dict[sup_id]:
+                assert (isinstance(ioc, IOC))
+                print '   {0:16} {1:16} {2}'.format(ioc.name, default_version(ioc.version), ioc.epics)
+            print
+    else:
+        print 'support module \"' + support_module_name + '\" does not exist or is not used by any (active) IOC\'s'
 
 
 def tests(argv):
