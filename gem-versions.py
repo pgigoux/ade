@@ -10,6 +10,7 @@ from os.path import islink, isdir, join
 # Software maturity values
 MATURITY_PROD = 'prod'
 MATURITY_WORK = 'work'
+MATURITY_TEST = 'test'
 
 # Site values
 SITE_CP = 'cp'
@@ -22,15 +23,21 @@ AREA_SUPPORT = 'support'
 AREA_LIST = [AREA_IOC, AREA_SUPPORT]
 
 
-def default_version(version):
+def default_version(version, maturity):
     """
-    Convert version number to 'work' if the version is an empty string.
-    Otherwise leave it unchanged.
+    Return the version number passed as an argument if the maturity is MATURITY_PROD, i.e.
+    when a version is (or should be) defined. Otherwise return the maturity as the version.
+    This routine is used to get a non-empty version when it's not defined, which is the case
+    in MATURITY_WORK and MATURITY_TEST.
     :param version: version string
+    :type version: str
+    :param maturity: software maturity
+    :type maturity: str
     :return: non empty version
     :rtype: str
     """
-    return version if version else MATURITY_WORK
+    return version if maturity == MATURITY_PROD else maturity
+    # return version if version else MATURITY_WORK
 
 
 def get_epics_versions(maturity):
@@ -80,7 +87,7 @@ def get_dependencies(file_name, prod_support, work_support):
                 if MATURITY_WORK in lst:
                     epics = lst[-3]
                     name = lst[-1]
-                    version = 'work'
+                    version = MATURITY_WORK
                     # print '=', name, version
                     if name in work_support:
                         output_list.append((name, version, epics, MATURITY_WORK))
@@ -91,6 +98,14 @@ def get_dependencies(file_name, prod_support, work_support):
                     version = lst[-1]
                     if name in prod_support:
                         output_list.append((name, version, epics, MATURITY_PROD))
+                elif MATURITY_TEST in lst:
+                    epics = ''
+                    name = lst[-1]
+                    version = MATURITY_TEST
+                    # print '=', name, version
+                    # if name in work_support:
+                    #     output_list.append((name, version, epics, MATURITY_WORK))
+                    pass
         f.close()
         # print '--', output_list
         return sorted(output_list)
@@ -109,10 +124,11 @@ def get_support_module_list(epics_version, maturity):
     :rtype: list
     """
     # print 'get_support_module_list', epics_version, maturity
-    directory = Config.maturity_directory(maturity)
+    directory = join(Config.maturity_directory(maturity), epics_version, 'support')
     # print directory
     if isdir(directory):
-        return listdir(join(directory, epics_version, 'support'))
+        # return listdir(join(directory, epics_version, 'support'))
+        return listdir(directory)
     else:
         # raise IOError('Directory ' + directory + ' does not exist')
         return []
@@ -163,6 +179,14 @@ class Config:
         return join(cls.root_dir, MATURITY_WORK)
 
     @classmethod
+    def test_dir(cls):
+        """
+        :return: test directory
+        :rtype: str
+        """
+        return join(cls.root_dir, MATURITY_TEST)
+
+    @classmethod
     def redirector_dir(cls):
         """
         :return: redirector directory
@@ -174,12 +198,18 @@ class Config:
     def maturity_directory(cls, maturity):
         """
         Return the directory for a given software maturity
-        :param maturity: software maturity (MATURITY_PROD or MATURITY_WORK)
+        :param maturity: software maturity (MATURITY_PROD, MATURITY_WORK or MATURITY_TEST)
         :type maturity: str
         :return: production or work directory
         :rtype: str
         """
-        return cls.prod_dir() if maturity == MATURITY_PROD else cls.work_dir()
+        if maturity == MATURITY_PROD:
+            return cls.prod_dir()
+        elif maturity == MATURITY_WORK:
+            return cls.work_dir()
+        else:
+            return cls.test_dir()
+            # return cls.prod_dir() if maturity == MATURITY_PROD else cls.work_dir()
 
 
 class Macro:
@@ -384,11 +414,18 @@ class IOC:
         :rtype: tuple
         """
         lst = link.split(directory_delimiter)
+        # print lst
         maturity = lst[2]
-        epics_version = lst[3]
-        ioc_target_name = lst[5]
-        ioc_site = lst[6]
-        ioc_version = lst[7] if maturity == MATURITY_PROD else ''
+        if maturity != MATURITY_TEST:
+            epics_version = lst[3]
+            ioc_target_name = lst[5]
+            ioc_site = lst[6]
+            ioc_version = lst[7] if maturity == MATURITY_PROD else ''
+        else:
+            epics_version = ''
+            ioc_target_name = ''
+            ioc_site = ''
+            ioc_version = ''
         epics_bsp = lst[-2]
         ioc_boot = lst[-1]
         return maturity, epics_version, epics_bsp, ioc_site, ioc_target_name, ioc_version, ioc_boot
@@ -542,7 +579,9 @@ def print_ioc_dependencies(argv):
     rd = Redirector(argv.exclude)
     if argv.name in rd.get_ioc_names():
         ioc = rd.get_ioc(argv.name)
-        print '{0} {1} {2} {3} {4}'.format(ioc.name, default_version(ioc.version), ioc.boot, ioc.epics, ioc.bsp)
+        assert (isinstance(ioc, IOC))
+        print '{0} {1} {2} {3} {4}'.format(ioc.name, default_version(ioc.version, ioc.maturity),
+                                           ioc.boot, ioc.epics, ioc.bsp)
         for support_module in ioc.get_ioc_dependencies():
             print '   {0:16} {1}'.format(support_module.name, support_module.version)
     else:
@@ -591,10 +630,11 @@ def print_support_module_dependencies(argv):
             assert (isinstance(sup, SupportModule))
             print sup.name, sup.version, sup.epics
             for dep in sup.get_support_module_dependencies():
-                print '   {0:16} {1:16} {2}'.format(dep.name, default_version(dep.version), dep.epics)
+                assert (isinstance(dep, SupportModule))
+                print '   {0:16} {1:16} {2}'.format(dep.name, default_version(dep.version, dep.maturity), dep.epics)
             for ioc in ioc_dict[sup_id]:
                 assert (isinstance(ioc, IOC))
-                print '   {0:16} {1:16} {2}'.format(ioc.name, default_version(ioc.version), ioc.epics)
+                print '   {0:16} {1:16} {2}'.format(ioc.name, default_version(ioc.version, ioc.maturity), ioc.epics)
             print
     else:
         print 'support module \"' + argv.name + '\" does not exist or is not used by any (active) IOC\'s'
