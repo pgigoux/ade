@@ -104,8 +104,12 @@ def test_print_ioc_dependencies():
 
     Config.set_root_directory(Config.ROOT_DIR_CP)
 
-    print_separator('test_print_ioc_dependencies')
+    print_separator('test_print_ioc_dependencies, production')
     args = command_line_arguments(['-i', 'mcs-cp-ioc'])
+    print_ioc_dependencies(args)
+
+    print_separator('test_print_ioc_dependencies, lab')
+    args = command_line_arguments(['-i', 'labcp1-cp-ioc'])
     print_ioc_dependencies(args)
 
 
@@ -113,8 +117,12 @@ def test_print_support_module_dependencies():
 
     Config.set_root_directory(Config.ROOT_DIR_CP)
 
-    print_separator('test_print_support_module_dependencies')
-    args = command_line_arguments(['wsWeb'])
+    print_separator('test_print_support_module_dependencies, no epics')
+    args = command_line_arguments(['iocStats'])
+    print_support_module_dependencies(args)
+
+    print_separator('test_print_support_module_dependencies, epics R3.14.12.6-1')
+    args = command_line_arguments(['iocStats', '-e', 'R3.14.12.6-1'])
     print_support_module_dependencies(args)
 
 
