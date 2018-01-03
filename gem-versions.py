@@ -281,7 +281,7 @@ class Macro:
 
 
 class Redirector:
-    def __init__(self, exclude_list=[]):
+    def __init__(self, exclude_list=[], epics_version=''):
         """
         Initializes the Redirector object. It builds the list of all IOCs in the redirector directory.
         IOC objects are stored in a dictionary indexed by the ioc name.
@@ -296,7 +296,9 @@ class Redirector:
         for ioc_name in ioc_name_list:
             ioc = IOC(ioc_name, self._get_ioc_link(ioc_name))
             # print ioc
-            self.ioc_dict[ioc_name] = ioc
+            if len(epics_version) == 0 or (ioc.epics == epics_version):
+                self.ioc_dict[ioc_name] = ioc
+            # self.ioc_dict[ioc_name] = ioc
             # print self.ioc_dict
 
     def __str__(self):
@@ -554,7 +556,7 @@ def print_ioc_summary(argv):
     :type argv: Namespace
     :return None
     """
-    rd = Redirector(argv.exclude)
+    rd = Redirector(argv.exclude, argv.epics)
     len_max = len(max(rd.get_ioc_names(), key=len))  # for formatting
     # print '-', rd.get_ioc_names()
     format_string_links = '{0:' + str(len_max) + '}  {1}'
@@ -576,7 +578,7 @@ def print_ioc_dependencies(argv):
     :return None
     """
     # print 'print_ioc_dependencies', argv.name
-    rd = Redirector(argv.exclude)
+    rd = Redirector(argv.exclude, argv.epics)
     if argv.name in rd.get_ioc_names():
         ioc = rd.get_ioc(argv.name)
         assert (isinstance(ioc, IOC))
@@ -609,7 +611,7 @@ def print_support_module_dependencies(argv):
 
     # Populate the two dictionaries. We loop over all the ioc's in the redirector directory
     # and then iterate over the dependencies for each ioc.
-    rd = Redirector(argv.exclude)
+    rd = Redirector(argv.exclude, argv.epics)
     for ioc in rd.get_ioc_list():
         # print '-', ioc
         for sup in ioc.get_ioc_dependencies():
@@ -679,6 +681,11 @@ def command_line_arguments(argv):
                         dest='exclude',
                         help='',
                         default=[])
+    parser.add_argument('-e', '--epics',
+                        action='store',
+                        dest='epics',
+                        help='',
+                        default='')
     parser.add_argument(action='store',
                         nargs='?',
                         dest='name',
