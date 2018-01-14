@@ -1,10 +1,7 @@
-import sys
 from os.path import join
-from gem_versions import AREA_IOC, AREA_SUPPORT, AREA_LIST
-from gem_versions import MATURITY_PROD, MATURITY_WORK
-from gem_versions import SITE_CP, SITE_MK, SITE_LIST
-from gem_versions import Config, Macro, Redirector, IOC, SupportModule
-from gem_versions import default_version, get_epics_versions, get_dependencies, get_support_module_list
+from versions import MATURITY_PROD, MATURITY_WORK
+from versions import Config, Redirector
+from versions import default_version, get_epics_versions, get_dependencies, get_support_module_list
 from gem_versions import command_line_arguments
 from gem_versions import print_ioc_summary, print_ioc_dependencies, print_support_module_dependencies
 
@@ -31,8 +28,8 @@ def test_config():
 
 def test_default_version():
     print_separator('test_default_version')
-    print 'default_version, 1.0', default_version('1.0')
-    print 'default_version, empty', default_version('')
+    print 'default_version, 1.0', default_version('1.0', MATURITY_PROD)
+    print 'default_version, empty', default_version('test', MATURITY_WORK)
 
 
 def test_epics_versions():
@@ -139,6 +136,3 @@ if __name__ == '__main__':
     # test_print_summary()
     # test_print_ioc_dependencies()
     test_print_support_module_dependencies()
-
-
-
