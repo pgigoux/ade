@@ -21,12 +21,25 @@ AREA_SUPPORT = 'support'
 AREA_LIST = [AREA_IOC, AREA_SUPPORT]
 
 
+def get_ioc_name(ioc_target_name, site):
+    """
+    This is an auxiliary routine to return the ioc name from the ioc target name
+    and the site in a consistent way all over the code.
+    :param ioc_target_name: ioc target name (e.g. mcs)
+    :type ioc_target_name: str
+    :param site: site name ('cp' or 'mk')
+    :type site: str
+    :return: ioc name (e.g. mcs-cp-ioc)
+    :rtype: str
+    """
+    return ioc_target_name + '-' + site + '-' + 'ioc'
+
+
 def default_version(version, maturity):
     """
     Return the version number passed as an argument if the maturity is MATURITY_PROD, i.e.
-    when a version is (or should be) defined. Otherwise return the maturity as the version.
-    This routine is used to get a non-empty version when it's not defined, which is the case
-    in MATURITY_WORK and MATURITY_TEST.
+    when a version is supposed to be defined. Otherwise return the maturity as the version.
+    This routine is intended to always return a non-empty version string for printing purposes.
     :param version: version string
     :type version: str
     :param maturity: software maturity
@@ -97,18 +110,53 @@ def get_dependencies(file_name, prod_support, work_support):
                     if name in prod_support:
                         output_list.append((name, version, epics, MATURITY_PROD))
                 elif MATURITY_TEST in lst:
-                    # do nothing
-                    # epics = ''
-                    # name = lst[-1]
-                    # version = MATURITY_TEST
-                    # print '=', name, version
-                    # if name in work_support:
-                    #     output_list.append((name, version, epics, MATURITY_WORK))
+                    # no dependency information available for MATURITY_TEST
                     pass
         f.close()
         # print '--', output_list
         return sorted(output_list)
     except IOError:
+        return []
+
+
+def get_ioc_list(epics_version, maturity):
+    """
+    Return the list of support modules available for a given EPICS version
+    :param epics_version: EPICS version
+    :type epics_version: str
+    :param maturity: software maturity ('prod' or 'work')
+    :type maturity: str
+    :return: list of ioc (target) names available for the given EPICS version
+    :rtype: list
+    """
+    # print 'ioc_list', epics_version, maturity
+    directory = join(Config.maturity_directory(maturity), epics_version, 'ioc')
+    # print directory
+    if isdir(directory):
+        return sorted(listdir(directory))
+    else:
+        return []
+    pass
+
+
+def get_ioc_versions(ioc_target_name, epics_version, site):
+    """
+    Get the versions available for a given IOC, EPICS version and site.
+    If no versions are available it will return an empty list.
+    :param ioc_target_name: ioc target name (e.g. 'mcs')
+    :type ioc_target_name: str
+    :param epics_version: EPICS version
+    :type epics_version: str
+    :param site: site name ('cp' or 'mk')
+    :type site: str
+    :return: list of versions available
+    :rtype: list
+    """
+    directory = join(Config.maturity_directory(MATURITY_PROD), epics_version, 'ioc', ioc_target_name, site)
+    # print directory
+    if isdir(directory):
+        return sorted(listdir(directory))
+    else:
         return []
 
 
@@ -119,17 +167,15 @@ def get_support_module_list(epics_version, maturity):
     :type epics_version: str
     :param maturity: software maturity ('prod' or 'work')
     :type maturity: str
-    :return: list of support modules available for the give EPICS version
+    :return: list of support modules available for the given EPICS version
     :rtype: list
     """
     # print 'get_support_module_list', epics_version, maturity
     directory = join(Config.maturity_directory(maturity), epics_version, 'support')
     # print directory
     if isdir(directory):
-        # return listdir(join(directory, epics_version, 'support'))
         return sorted(listdir(directory))
     else:
-        # raise IOError('Directory ' + directory + ' does not exist')
         return []
 
 
@@ -146,7 +192,7 @@ def get_support_module_versions(support_module_name, epics_version):
     """
     directory = join(Config.maturity_directory(MATURITY_PROD), epics_version, 'support', support_module_name)
     if isdir(directory):
-        return listdir(directory)
+        return sorted(listdir(directory))
     else:
         return []
 
@@ -311,12 +357,12 @@ class Redirector:
         ioc_name_list = self._get_redirector_links(exclude_list)
         # print ioc_name_list
         for ioc_name in ioc_name_list:
-            ioc = IOC(ioc_name, self._get_ioc_link(ioc_name))
+            # ioc = IOC(ioc_name, self._get_ioc_link(ioc_name))
+            ioc = IOC(ioc_name)
+            ioc.set_attributes_from_link(self._get_ioc_link(ioc_name))
             # print ioc
             if len(epics_version) == 0 or (ioc.epics == epics_version):
                 self.ioc_dict[ioc_name] = ioc
-            # self.ioc_dict[ioc_name] = ioc
-            # print self.ioc_dict
 
     def __str__(self):
         return str(self.ioc_dict.keys())
@@ -390,30 +436,47 @@ class Redirector:
 class IOC:
     """
     Class used to store the attributes of a single IOC:
-    name:          IOC name in the redirector directory
+    name:          IOC name in the redirector directory (e.g. mcs-cp-ioc)
     maturity       software maturity ('prod' or 'work')
     epics          EPICS version (e.g. R3.14.12.6)
-    bsp            EPICS BSP (e.g. RTEMS-mvme2307)
     site:          IOC site ('cp' or 'mk')
     target_name:   IOC target name, i.e. name of the directory where the software is stored (e.g. 'mcs')
     version:       IOC version (e.g. 1-8-R314-2) or blank if maturity==work
+    bsp            EPICS BSP (e.g. RTEMS-mvme2307)
     boot:          IOC boot image (e.g. gcal-cp-ioc.boot)
     """
 
-    def __init__(self, ioc_name, ioc_link):
+    # def __init__(self, ioc_name, ioc_link):
+    def __init__(self, ioc_name):
         self.name = ioc_name
+        (self.maturity, self.epics, self.site, self.target_name, self.version,
+         self.bsp, self.boot, self.link) = ('', '', '', '', '', '', '', '')
+        # self.link = ioc_link
+        # (self.maturity, self.epics, self.site, self.target_name, self.version,
+        #  self.bsp, self.boot) = self._split_ioc_link(ioc_link)
+
+    def set_attributes(self, maturity, epics, site, target_name, version, bsp='', boot=''):
+        self.maturity = maturity
+        self.epics = epics
+        self.site = site
+        self.target_name = target_name
+        self.version = version
+        self.bsp = bsp
+        self.boot = boot
+
+    def set_attributes_from_link(self, ioc_link):
         self.link = ioc_link
-        (self.maturity, self.epics, self.bsp, self.site, self.target_name, self.version,
-         self.boot) = self._split_ioc_link(ioc_link)
+        (self.maturity, self.epics, self.site, self.target_name, self.version,
+         self.bsp, self.boot) = self._split_ioc_link(ioc_link)
 
     def __str__(self):
         """
         :return: string representation of the IOC object
         :rtype: str
         """
-        format_string = 'name={0}, maturity={1}, epics={2}, bsp={3}, site={4}, target={5}, version={6}, boot={7}'
-        return format_string.format(self.name, self.maturity, self.epics, self.bsp, self.site, self.target_name,
-                                    self.version if self.version else 'n/a', self.boot)
+        format_string = 'name={}, maturity={}, epics={}, site={}, target={}, version={}, bsp={}, boot={}'
+        return format_string.format(self.name, self.maturity, self.epics, self.site, self.target_name,
+                                    self.version if self.version else 'n/a', self.bsp, self.boot)
 
     @staticmethod
     def _split_ioc_link(link):
@@ -447,7 +510,7 @@ class IOC:
             ioc_version = ''
         epics_bsp = lst[-2]
         ioc_boot = lst[-1]
-        return maturity, epics_version, epics_bsp, ioc_site, ioc_target_name, ioc_version, ioc_boot
+        return maturity, epics_version, ioc_site, ioc_target_name, ioc_version, epics_bsp, ioc_boot
 
     def _get_ioc_release_file(self):
         """
