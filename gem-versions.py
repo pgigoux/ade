@@ -135,6 +135,11 @@ def print_active_support_module_dependencies(argv):
 
 def print_ioc_dependencies(args):
     """
+    Loop over all IOC's, sites and versions for a given EPICS version.
+    Create a dictionary indexed by the tuple (name, version), where each
+    element of the dictionary is a list of the dependencies for the given ioc.
+    Only IOC's for MATURITY_PROD are considered since versions numbers
+    don't make sense in maturities other than prod.
     :param args:
     :return:
     """
@@ -144,11 +149,6 @@ def print_ioc_dependencies(args):
     len_name_max = 0
     len_version_max = 0
 
-    # Loop over all IOC's, sites and versions for a given EPICS version.
-    # Create a dictionary indexed by the tuple (name, version), where each
-    # element of the dictionary is a list of the dependencies for the given ioc.
-    # Only ioc's for MATURITY_PROD are considered since versions numbers
-    # don't make sense in MATURITY_WORK or MATURITY_TEST.
     for ioc_target_name in ioc_list:
         for site in SITE_LIST:
             for ioc_version in get_ioc_versions(ioc_target_name, epics_version, site):
@@ -161,92 +161,53 @@ def print_ioc_dependencies(args):
                 len_name_max = max(len_name_max, len(ioc_name))
                 len_version_max = max(len_version_max, len(ioc_version))
 
-    print_aux(dep_list, epics_version, len_name_max, len_version_max)
+    print_dependency_report(dep_list, epics_version, len_name_max, len_version_max)
 
 
 def print_support_module_dependencies(args):
     """
+    Loop over all support modules and versions for a given EPICS version.
+    Create a dictionary indexed by the tuple (name, version), where each
+    element of the dictionary is a list of the dependencies for the given module.
+    Only support modules for MATURITY_PROD are considered since versions numbers
+    don't make sense in maturities other than prod.
     :param args:
     :return:
     """
     epics_version = args.epics
     support_module_list = get_support_module_list(epics_version, MATURITY_PROD)
     dep_list = {}
-    dep_names = {}
-    dep_versions = {}
     len_name_max = 0
     len_version_max = 0
-    referenced_names = set()
 
-    # Loop over all support modules and versions for a given EPICS version.
-    # Create a dictionary indexed by the tuple (name, version), where each
-    # element of the dictionary is a list of the dependencies for the given module.
-    # Only support modules for MATURITY_PROD are considered since versions numbers
-    # don't make sense in MATURITY_WORK or MATURITY_TEST.
     for support_name in support_module_list:
         for support_version in get_support_module_versions(support_name, epics_version):
-            # key = (support_name, support_version)
             sup = SupportModule(support_name, support_version, epics_version, MATURITY_PROD)
             dep_list[(support_name, support_version)] = sup.get_support_module_dependencies()
-            # print sup, len(dep_list[key]), dep_list
-            # dep_names[key] = [x.name for x in dep_list[key]]
-            # dep_versions[key] = [x.version for x in dep_list[key]]
-            # calculate the max lengths
             len_name_max = max(len_name_max, len(support_name))
             len_version_max = max(len_version_max, len(support_version))
-            # referenced_names.update(dep_names[key])
-            # print dep_names[key]
 
-    print_aux(dep_list, epics_version, len_name_max, len_version_max)
-    # return
-    #
-    # # Sort the list (set) of support module names that are referenced by other modules.
-    # # This is the list that will be used later in the report colums; we don't want empty
-    # # columns that make the report unnecessarily wider.
-    # referenced_names = sorted(referenced_names)
-    #
-    # # Calculate the maximum length between the support module name and version.
-    # # This number will be used when formatting output.
-    # len_max = max(len_name_max, len_version_max)
-    #
-    # # Print title. Leave empty space for the name and version at the beginning.
-    # print fmt([epics_version], len_name_max) + fmt(' ', len_version_max) + fmt(referenced_names, len_max)
-    #
-    # # Print support modules. There will be one line per support module starting
-    # # the name and version, and then followed by the versions of the dependencies.
-    # # Only support modules with dependencies will be listed in the output.
-    # for support_name, support_version in sorted(dep_list):
-    #
-    #     # print support_name, support_version
-    #     key = (support_name, support_version)
-    #
-    #     # Skip modules with no dependencies
-    #     if len(dep_names[key]) == 0:  # no dependencies
-    #         continue
-    #
-    #     # Loop over the referenced dependencies (the report columns).
-    #     # Trap those that are not a dependency.
-    #     column_list = []
-    #     for dep in referenced_names:
-    #         try:
-    #             idx = dep_names[key].index(dep)
-    #             column_list.append(dep_versions[key][idx])
-    #         except ValueError:
-    #             column_list.append('-')  # not a dependency
-    #     print fmt([support_name], len_name_max) + fmt([support_version], len_version_max) + fmt(column_list, len_max)
+    print_dependency_report(dep_list, epics_version, len_name_max, len_version_max)
 
 
-def print_aux(dep_list, epics_version, len_name_max, len_version_max):
+def print_dependency_report(dep_list, epics_version, len_name_max, len_version_max):
     """
-
-    :param dep_list:
-    :param epics_version:
-    :param len_name_max:
-    :param len_version_max:
+    :param dep_list: dependency dictionary, indexed by a (name, version) tuple
+    :type dep_list: dict
+    :param epics_version: EPICS version
+    :type epics_version: str
+    :param len_name_max: max length of a support module or IOC name
+    :type len_name_max: int
+    :param len_version_max: max length of a support module or IOC version
+    :type len_version_max: int
     :return:
     """
+    # These two variables are used to store the list of dependency names and versions
+    # in two separate dictionaries indexed by the same index used in dep_list.
     dep_names = {}
     dep_versions = {}
+
+    # The reference names set is used to build a list of unique dependency names.
     referenced_names = set()
 
     for key in dep_list:
@@ -254,9 +215,9 @@ def print_aux(dep_list, epics_version, len_name_max, len_version_max):
         dep_versions[key] = [x.version for x in dep_list[key]]
         referenced_names.update(dep_names[key])
 
-    # Sort the list (set) of support module names that are referenced by other modules.
-    # This is the list that will be used later in the report colums; we don't want empty
-    # columns that make the report unnecessarily wider.
+    # Sort the list (set) of support module names that are actually used.
+    # Support modules that are not used won't be included in this list.
+    # Therefore, the report will include columns of relevant dependencies.
     referenced_names = sorted(referenced_names)
     # print referenced_names
 
@@ -264,12 +225,13 @@ def print_aux(dep_list, epics_version, len_name_max, len_version_max):
     # This number will be used when formatting output.
     len_max = max(len_name_max, len_version_max)
 
-    # Print title. Leave empty space for the name and version at the beginning.
+    # Print title. The EPICS version will show up in the leftmost colums. This column will be
+    # wide enough for the name and version of the support module or ioc.
     print fmt([epics_version], len_name_max) + fmt(' ', len_version_max) + fmt(referenced_names, len_max)
 
-    # Print support modules. There will be one line per support module starting
-    # the name and version, and then followed by the versions of the dependencies.
-    # Only support modules with dependencies will be listed in the output.
+    # Print support modules pr IOC's. There will be one line per item. The first two columns
+    # will have the name and version, followed by the versions of the dependency versions.
+    # Only support modules and IOC's with dependencies will be listed in the output.
     for name, version in sorted(dep_list):
 
         # print support_name, support_version
@@ -352,11 +314,12 @@ def command_line_arguments(argv):
 
 if __name__ == '__main__':
 
-    args = command_line_arguments(['-r', 'gem_sw_cp_2', '-e', 'R3.14.12.7'])
-    Config.set_root_directory(args.root[0])
+    # args = command_line_arguments(['-r', 'gem_sw_cp_2', '-e', 'R3.14.12.7'])
+    # Config.set_root_directory(args.root[0])
     # print_ioc_dependencies(args)
-    print_support_module_dependencies(args)
-    exit(0)
+    # print '-' * 80
+    # print_support_module_dependencies(args)
+    # exit(0)
 
     args = command_line_arguments(sys.argv[1:])
 
