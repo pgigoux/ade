@@ -3,7 +3,7 @@ from versions import MATURITY_PROD, MATURITY_WORK
 from versions import Config, Redirector
 from versions import default_version, get_epics_versions, get_dependencies, get_support_module_list
 from gem_versions import command_line_arguments
-from gem_versions import print_ioc_summary, print_ioc_dependencies, print_support_module_dependencies
+from gem_versions import print_active_ioc_summary, print_ioc_dependencies, print_support_module_dependencies
 
 
 def print_separator(text):
@@ -72,6 +72,7 @@ def test_redirector():
 
 
 def test_ioc():
+
     pass
 
 
@@ -86,15 +87,15 @@ def test_print_summary():
 
         print_separator('test_print_summary, no links, no exclude ' + directory)
         args = command_line_arguments([])
-        print_ioc_summary(args)
+        print_active_ioc_summary(args)
 
         print_separator('test_print_summary, no links, exclude lab/sim ' + directory)
         args = command_line_arguments(['-x', 'lab', 'sim'])
-        print_ioc_summary(args)
+        print_active_ioc_summary(args)
 
         print_separator('test_print_summary, links ' + directory)
         args = command_line_arguments(['-l'])
-        print_ioc_summary(args)
+        print_active_ioc_summary(args)
 
 
 def test_print_ioc_dependencies():
@@ -115,7 +116,7 @@ def test_print_support_module_dependencies():
     Config.set_root_directory(Config.ROOT_DIR_CP)
 
     print_separator('test_print_support_module_dependencies, no epics')
-    args = command_line_arguments(['iocStats'])
+    args = command_line_arguments(['whoami'])
     print_support_module_dependencies(args)
 
     print_separator('test_print_support_module_dependencies, epics R3.14.12.6-1')
@@ -124,15 +125,15 @@ def test_print_support_module_dependencies():
 
 
 if __name__ == '__main__':
-    Config.root_dir = Config.ROOT_DIR_CP
+    Config.root_dir = './gem_sw_cp_2'
     # test_command_line(['-h'])
     # test_config()
     # test_get_dependencies()
-    # test_redirector()
+    test_redirector()
     # test_default_version()
     # test_epics_versions()
     # test_get_dependencies()
 
     # test_print_summary()
     # test_print_ioc_dependencies()
-    test_print_support_module_dependencies()
+    # test_print_support_module_dependencies()
