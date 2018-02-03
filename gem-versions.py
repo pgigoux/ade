@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import sys
-# import re
 from argparse import ArgumentParser, SUPPRESS, Namespace
 from os.path import isdir
 from versions import Redirector, IOC, SupportModule, Config
@@ -18,7 +17,7 @@ NOT_FOUND = (-1)
 
 def fmt(item_list, width, csv=False, csv_delimiter=','):
     """
-    Format a list of items in "columns" of at least width characters, or using CSV format.
+    Format a list of items in columns of at least width characters. Use CSV format if csv=True
     :param item_list: list of items to format
     :type item_list: list
     :param width: column width
@@ -35,24 +34,24 @@ def fmt(item_list, width, csv=False, csv_delimiter=','):
         format_string = ('{:s}' + csv_delimiter) * len(item_list)
     else:
         format_string = ('{:' + str(width + 1) + 's} ') * len(item_list)
-    # print format_string
     return format_string.format(*item_list)
 
 
 def skip_name(name, match_list):
     """
-    :param name:
+    Auxiliary routine used to skip (ignore) an IOC or support module from the output.
+    A name won't be skipped if any string in the match list is a substring of the name.
+    No items will be ignored if the match list is empty.
+    :param name: name to check
     :type name: str
-    :param match_list:
+    :param match_list: list of strings that should be allowed in the output
     :type match_list: list
-    :return:
+    :return: boolean value indicating whether the name should be included or not
     :rtype: bool
     """
     if match_list:
         for s in match_list:
-            # print 'm', 's=', s, 'n=', name, s.find(name)
             if name.find(s) != NOT_FOUND:
-                # print 'match'
                 return False
         return True
     else:
@@ -61,11 +60,14 @@ def skip_name(name, match_list):
 
 def skip_exclude(name, exclude_list):
     """
-    :param name:
+    Auxiliary routine used to skip (exclude) an IOC or support module from the output.
+    No items will be excluded if the exclude list is empty.
+    :param name: name to check
     :type name: str
-    :param exclude_list:
+    :param exclude_list: list of strings that should be excluded from the output
     :type exclude_list: list
-    :return:
+    :return: boolean value indicating whether the name should be excluded or not
+    :rtype: bool
     """
     for s in exclude_list:
         if name.find(s) != NOT_FOUND:
@@ -75,11 +77,13 @@ def skip_exclude(name, exclude_list):
 
 def skip_epics(epics_version, epics_version_list):
     """
-    :param epics_version:
+    Auxiliary routine used to skip (exclude) an IOC or support module from the output based on its EPICS version.
+    No items will be excluded if the epics list is empty.
+    :param epics_version: EPICS version to check against the list
     :type epics_version: str
-    :param epics_version_list:
+    :param epics_version_list: list
     :type epics_version_list: list
-    :return: skip EPICS version?
+    :return: boolean value indicating whether the epics version should be excluded or not
     :rtype: bool
     """
     # print epics_version, epics_version_list
@@ -92,39 +96,17 @@ def skip_epics(epics_version, epics_version_list):
         return False
 
 
-# def print_active_ioc_summary(argv):
-#     """
-#     Print version information for all IOC's in the redirector directory.
-#     There "links" output is the same as the 'configure-ioc -L' output.
-#     :param argv: command line arguments
-#     :type argv: Namespace
-#     :return None
-#     """
-#     rd = Redirector(argv.exclude, argv.epics)
-#     len_max = len(max(rd.get_ioc_names(), key=len))  # for formatting
-#     # print '-', rd.get_ioc_names()
-#     format_string_links = '{0:' + str(len_max) + '}  {1}'
-#     format_string_details = '{0:' + str(len_max) + '}  {1:5} {2:14} {3:15} {4:13} {5}'
-#     for ioc in rd.get_ioc_list():
-#         # print ioc
-#         if argv.links:
-#             print format_string_links.format(ioc.name, ioc.link)
-#         else:
-#             print format_string_details.format(ioc.name, ioc.maturity, ioc.epics, ioc.bsp, ioc.version, ioc.boot)
-
-
 def print_active_ioc_summary(exclude_list, epics_version_list, print_links):
     """
     Print version information for all IOC's in the redirector directory.
     There "links" output is the same as the 'configure-ioc -L' output.
-    :param exclude_list: list of IOC's (words) to exclude from the list
+    :param exclude_list: list of IOC's (substrings) to exclude from the list
     :type exclude_list: list
     :param epics_version_list:
     :param print_links: print links instead of formatted table (same as configure-ioc -L)
     :type print_links: bool
     :return None
     """
-    # rd = Redirector(argv.exclude, argv.epics)
     rd = Redirector()
     len_max = len(max(rd.get_ioc_names(), key=len))  # for formatting
     # print '-', rd.get_ioc_names()
@@ -141,27 +123,6 @@ def print_active_ioc_summary(exclude_list, epics_version_list, print_links):
             print format_string_details.format(ioc.name, ioc.maturity, ioc.epics, ioc.bsp, ioc.version, ioc.boot)
 
 
-# def print_active_ioc_dependencies(argv):
-#     """
-#     Print the dependency information of the IOC's in the redirector directory.
-#     For each IOC, it prints the IOC version, EPICS version and EPICS BSP for the IOC,
-#     and the list of support modules that the IOC depends on.
-#     :param argv: command line arguments
-#     :type argv: Namespace
-#     :return None
-#     """
-#     # print 'print_ioc_dependencies', argv.name
-#     rd = Redirector(argv.exclude, argv.epics)
-#     if argv.name in rd.get_ioc_names():
-#         ioc = rd.get_ioc(argv.name)
-#         assert (isinstance(ioc, IOC))
-#         print '{0} {1} {2} {3} {4}'.format(ioc.name, default_version(ioc.version, ioc.maturity),
-#                                            ioc.boot, ioc.epics, ioc.bsp)
-#         for support_module in ioc.get_ioc_dependencies():
-#             print '   {0:16} {1}'.format(support_module.name, support_module.version)
-#     else:
-#         print argv.name + ' not found'
-
 def print_active_ioc_dependencies(ioc_name_list, exclude_list, epics_version_list):
     """
     Print the dependency information of IOC's in the redirector directory.
@@ -175,11 +136,9 @@ def print_active_ioc_dependencies(ioc_name_list, exclude_list, epics_version_lis
     :type epics_version_list: list
     :return None
     """
-    # print 'print_ioc_dependencies', argv.name
-    # rd = Redirector(argv.exclude, argv.epics)
+    # print 'print_ioc_dependencies'
     rd = Redirector()
     for ioc in rd.get_ioc_list():
-        # print match_list
         # print ioc
         assert (isinstance(ioc, IOC))
         if skip_name(ioc.name, ioc_name_list) or \
@@ -192,63 +151,6 @@ def print_active_ioc_dependencies(ioc_name_list, exclude_list, epics_version_lis
             print '   {:16} {}'.format(support_module.name, support_module.version)
         print
 
-
-# def print_active_support_module_dependencies(argv):
-#     """
-#     Print the support module dependencies that are used by one or more IOC's.
-#     The report includes dependencies with other support modules and the IOC's that depend on them.
-#     :param argv: command line arguments
-#     :type argv: Namespace
-#     :return None
-#     """
-#     # print 'print_support_module_dependencies', support_module_name
-#
-#     # The ioc dictionary is used to create a cross reference between support modules and IOC objects.
-#     # Each entry is indexed by the support module id and contains the list of IOC's using the support module.
-#     # Repeated dependencies are prevented by not appending them to the list.
-#     ioc_dict = {}
-#
-#     # The support module dictionary is used to map support module id's with SupportModule objects.
-#     # Repeated dependencies will be discarded.
-#     sup_dict = {}
-#
-#     # Populate the two dictionaries. We loop over all the ioc's in the redirector directory
-#     # and then iterate over the dependencies for each ioc.
-#     rd = Redirector(argv.exclude, argv.epics)
-#     for ioc in rd.get_ioc_list():
-#         # print '-', ioc
-#         for sup in ioc.get_ioc_dependencies():
-#             sup_dict[sup.id] = sup  # repeated entries are discarded at this point
-#             assert (isinstance(sup, SupportModule))
-#             # print '  ', sup
-#             if sup.name == argv.name:
-#                 if sup.id in ioc_dict:
-#                     ioc_dict[sup.id].append(ioc)
-#                 else:
-#                     ioc_dict[sup.id] = [ioc]
-#
-#     # Check whether there are any ioc's that depend of the support module we are looking for.
-#     # An empty dictionary means either that no ioc's depend on the support module, or that
-#     # the support module doesn't exist at all.
-#     if ioc_dict:
-#         # Print the support module dependencies first, followed by the ioc's that use the support module
-#         for sup_id in sorted(ioc_dict):
-#             sup = sup_dict[sup_id]
-#             # print '--', sup
-#             assert (isinstance(sup, SupportModule))
-#             print sup.name, sup.version, sup.epics
-#             # print support module dependencies
-#             for dep in sup.get_support_module_dependencies():
-#                 assert (isinstance(dep, SupportModule))
-#                 print '   {0:16} {1:16} {2}'.format(dep.name, default_version(dep.version, dep.maturity), dep.epics)
-#             # print ioc's that depend on the support module
-#             for ioc in ioc_dict[sup_id]:
-#                 assert (isinstance(ioc, IOC))
-#                 print '   {0:16} {1:16} {2}'.format(ioc.name, default_version(ioc.version, ioc.maturity), ioc.epics)
-#             print
-#     else:
-#         print 'support module(s) \'' + str(argv.name) + '\'' + \
-#               ' does not exist or is not used by any IOC\'s in the redirector directory'
 
 def print_active_support_module_dependencies(support_name_list, exclude_list, epics_version_list):
     """
@@ -287,11 +189,6 @@ def print_active_support_module_dependencies(support_name_list, exclude_list, ep
             # print '  ', sup
             if skip_name(sup.name, support_name_list):
                 continue
-            # if sup.name == argv.name:
-            #     if sup.id in ioc_dict:
-            #         ioc_dict[sup.id].append(ioc)
-            #     else:
-            #         ioc_dict[sup.id] = [ioc]
             if sup.id in ioc_dict:
                 ioc_dict[sup.id].append(ioc)
             else:
@@ -386,21 +283,21 @@ def print_support_module_list(epics_version_list):
         print format_string.format(support_name, support_dict[support_name])
 
 
-def print_ioc_dependency_report(match_list, exclude_list, epics_version_list, csv_output):
+def print_ioc_dependency_report(ioc_name_list, exclude_list, epics_version_list, csv_output):
     """
     Print a matrix (table) with the dependencies for each IOC.
-    The match list can be used to select IOC's matching a list of strings.
-    The exclude list can be used to skip IOC's matching a list of strings.
+    The match list can be used to select IOC's matching a list of substrings.
+    The exclude list can be used to skip IOC's matching a list of substrings.
 
     Create a dictionary indexed by the tuple (name, version), where each
     element of the dictionary is a list of the dependencies for the given ioc.
     Only IOC's for MATURITY_PROD are considered since versions numbers
     don't make sense in maturities other than prod.
-    :param match_list:
-    :type match_list: list
-    :param exclude_list:
+    :param ioc_name_list: list of IOC names to include in the output
+    :type ioc_name_list: list
+    :param exclude_list: list of strings to match IOC names to exclude from the output
     :type exclude_list: list
-    :param epics_version_list:
+    :param epics_version_list: list of EPICS versions to include in the output
     :type epics_version_list: list
     :param csv_output: CSV output?
     :type csv_output: bool
@@ -422,7 +319,7 @@ def print_ioc_dependency_report(match_list, exclude_list, epics_version_list, cs
             for site in SITE_LIST:
                 for ioc_version in get_ioc_versions(ioc_target_name, epics_version, site):
                     ioc_name = get_ioc_name(ioc_target_name, site)
-                    if skip_name(ioc_name, match_list) or skip_exclude(ioc_name, exclude_list):
+                    if skip_name(ioc_name, ioc_name_list) or skip_exclude(ioc_name, exclude_list):
                         continue
                     # print ioc_name, ioc_version
                     ioc = IOC(ioc_name)
@@ -438,20 +335,20 @@ def print_ioc_dependency_report(match_list, exclude_list, epics_version_list, cs
             print '\n'
 
 
-def print_support_module_dependency_report(match_list, exclude_list, epics_version_list, csv_output):
+def print_support_module_dependency_report(support_name_list, exclude_list, epics_version_list, csv_output):
     """
     Loop over all support modules and versions for all EPICS versions in the EPICS list
     Create a dictionary indexed by the tuple (name, version), where each
     element of the dictionary is a list of the dependencies for the given module.
     Only support modules for MATURITY_PROD are considered since versions numbers
     don't make sense in maturities other than prod.
-    :param match_list:
-    :type match_list: list
-    :param exclude_list:
+    :param support_name_list: list of support module names to include in the output
+    :type support_name_list: list
+    :param exclude_list: list of support module names to exclude from the output
     :type exclude_list: list
-    :param epics_version_list:
+    :param epics_version_list: list of EPICS versions to include in the output
     :type epics_version_list: list
-    :param csv_output: CSV output?
+    :param csv_output: csv output?
     :type csv_output: bool
     :return: None
     """
@@ -462,7 +359,7 @@ def print_support_module_dependency_report(match_list, exclude_list, epics_versi
         len_version_max = 0
 
         for support_name in support_module_list:
-            if skip_name(support_name, match_list) or skip_exclude(support_name, exclude_list):
+            if skip_name(support_name, support_name_list) or skip_exclude(support_name, exclude_list):
                 continue
             for support_version in get_support_module_versions(support_name, epics_version):
                 sup = SupportModule(support_name, support_version, epics_version, MATURITY_PROD)
@@ -650,32 +547,6 @@ def command_line_arguments(argv):
     return parser.parse_args(argv)
 
 
-# def skip_name(name, match_list, exclude_list):
-#     """
-#     :param name:
-#     :type name: str
-#     :param match_list:
-#     :type match_list: list
-#     :param exclude_list:
-#     :type exclude_list: list
-#     :return:
-#     """
-#     # First check the list of strings to exclude.
-#     for s in exclude_list:
-#         if name.find(s) != NOT_FOUND:
-#             return True
-#
-#     # Then check the list of matching words.
-#     if match_list:
-#         for s in match_list:
-#             # print 'm', 's=', s, 'n=', name, s.find(name)
-#             if name.find(s) != NOT_FOUND:
-#                 # print 'match'
-#                 return False
-#         return True
-#     else:
-#         return False
-
 if __name__ == '__main__':
 
     # args = command_line_arguments(['-t', 'gem_sw_cp_2', '-r', 'lib'])
@@ -693,14 +564,17 @@ if __name__ == '__main__':
         print 'Redirector, prod or work directory not found'
         exit(1)
 
+    # Determine what version(s) of EPICS will be used based on what options were selected.
+    # Reports always require a version of EPICS to be specified (most recent version).
+    # In all other cases, the version will be whatever the user specified or none.
     if args.query_epics or args.query_support or args.query_ioc or args.report:
         if args.epics:
             if EPICS_ALL in args.epics:
-                epics_list = get_epics_versions(MATURITY_PROD)
+                epics_list = get_epics_versions(MATURITY_PROD)  # use all
             else:
-                epics_list = args.epics
+                epics_list = args.epics  # use specified
         else:
-            epics_list = [get_latest_epics_version(MATURITY_PROD)]
+            epics_list = [get_latest_epics_version(MATURITY_PROD)]  # use latest
     else:
         epics_list = args.epics
 
@@ -709,27 +583,33 @@ if __name__ == '__main__':
 
     # Decide what report to print based on the command line options.
     if args.query_epics:
+        # list available EPICS versions
         print_epics_version_list()
 
     elif args.query_support:
-        print_support_module_list(epics_list)
+        # list available support modules
+        print_support_module_list(epics_list)   #
 
     elif args.query_ioc:
+        # list available IOC's
         print_ioc_list(epics_list)
 
     elif args.report:
+        # these are the table/matrix dependency reports
         if args.area == AREA_IOC:
             print_ioc_dependency_report(args.name, args.exclude, epics_list, args.csv)
         else:
             print_support_module_dependency_report(args.name, args.exclude, epics_list, args.csv)
 
     elif args.name:
+        # these are the ones that report on entries in the redirector directory (active or in use)
         if args.area == AREA_IOC:
             print_active_ioc_dependencies(args.name, args.exclude, epics_list)
         else:
             print_active_support_module_dependencies(args.name, args.exclude, args.epics)
 
     else:
+        # and finally, the 'configure-ioc -L' output
         print_active_ioc_summary(args.exclude, epics_list, args.links)
 
     exit(0)
