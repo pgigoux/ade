@@ -48,7 +48,6 @@ def default_version(version, maturity):
     :rtype: str
     """
     return version if maturity == MATURITY_PROD else maturity
-    # return version if version else MATURITY_WORK
 
 
 def get_epics_versions(maturity):
@@ -65,6 +64,11 @@ def get_epics_versions(maturity):
         return [f for f in listdir(directory) if re.search('^R', f) and isdir(join(directory, f))]
     else:
         return []
+
+
+def get_latest_epics_version(maturity):
+    epics_list = get_epics_versions(maturity)
+    return epics_list[-1] if epics_list else []
 
 
 def get_dependencies(file_name, prod_support, work_support):
@@ -344,25 +348,40 @@ class Macro:
 
 
 class Redirector:
-    def __init__(self, exclude_list=[], epics_version=''):
+    # def __init__(self, exclude_list=[], epics_version=''):
+    #     """
+    #     Initializes the Redirector object. It builds the list of all IOCs in the redirector directory.
+    #     IOC objects are stored in a dictionary indexed by the ioc name.
+    #     The IOC objects contain all the information that can be extracted from the IOC links.
+    #     The IOCs whose name match any of the strings in the exclude list are not included in the IOC lists.
+    #     :param exclude_list: list of IOC's to exclude from the redirector directory
+    #     :type exclude_list: list
+    #     """
+    #     self.ioc_dict = {}
+    #     ioc_name_list = self._get_redirector_links(exclude_list)
+    #     # print ioc_name_list
+    #     for ioc_name in ioc_name_list:
+    #         # ioc = IOC(ioc_name, self._get_ioc_link(ioc_name))
+    #         ioc = IOC(ioc_name)
+    #         ioc.set_attributes_from_link(self._get_ioc_link(ioc_name))
+    #         # print ioc
+    #         if len(epics_version) == 0 or (ioc.epics == epics_version):
+    #             self.ioc_dict[ioc_name] = ioc
+
+    def __init__(self):
         """
         Initializes the Redirector object. It builds the list of all IOCs in the redirector directory.
         IOC objects are stored in a dictionary indexed by the ioc name.
         The IOC objects contain all the information that can be extracted from the IOC links.
-        The IOCs whose name match any of the strings in the exclude list are not included in the IOC lists.
-        :param exclude_list: list of IOC's to exclude from the redirector directory
-        :type exclude_list: list
+
         """
         self.ioc_dict = {}
-        ioc_name_list = self._get_redirector_links(exclude_list)
+        ioc_name_list = self._get_redirector_links()
         # print ioc_name_list
         for ioc_name in ioc_name_list:
-            # ioc = IOC(ioc_name, self._get_ioc_link(ioc_name))
             ioc = IOC(ioc_name)
             ioc.set_attributes_from_link(self._get_ioc_link(ioc_name))
-            # print ioc
-            if len(epics_version) == 0 or (ioc.epics == epics_version):
-                self.ioc_dict[ioc_name] = ioc
+            self.ioc_dict[ioc_name] = ioc
 
     def __str__(self):
         return str(self.ioc_dict.keys())
@@ -396,7 +415,7 @@ class Redirector:
         return sorted(self.ioc_dict.values(), key=lambda x: x.name)
 
     @staticmethod
-    def _get_redirector_links(exclude_list):
+    def _get_redirector_links():
         """
         Return the list of links in the redirector directory
         :param exclude_list: list of IOCs to exclude from the list
@@ -408,9 +427,9 @@ class Redirector:
         redirector_directory = Config.redirector_dir()
         if isdir(redirector_directory):
             file_list = [f for f in listdir(redirector_directory) if islink(join(redirector_directory, f))]
-            if exclude_list:
-                m = re.compile('|'.join(exclude_list))
-                file_list = [f for f in file_list if m.search(f) is None]
+            # if exclude_list:
+            #     m = re.compile('|'.join(exclude_list))
+            #     file_list = [f for f in file_list if m.search(f) is None]
             # print '==', file_list
             return sorted(file_list)
         else:
