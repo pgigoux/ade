@@ -54,9 +54,9 @@ def get_epics_versions(maturity):
     """
     Return the list of EPICS versions available in the production directory.
     It is assumed that the EPICS directory start with an 'R'
-    :param maturity
+    :param maturity: software maturity
     :type maturity: str
-    :return: list of EPICS versions
+    :return: unsorted list of EPICS versions
     :rtype: list
     """
     directory = Config.maturity_directory(maturity)
@@ -67,8 +67,14 @@ def get_epics_versions(maturity):
 
 
 def get_latest_epics_version(maturity):
-    epics_list = get_epics_versions(maturity)
-    return epics_list[-1] if epics_list else []
+    """
+    Return the latest version of EPICS available.
+    :param maturity: software maturity
+    :type maturity: str
+    :return:
+    """
+    epics_list = sorted(get_epics_versions(maturity), reverse=True)
+    return epics_list[0] if epics_list else []
 
 
 def get_dependencies(file_name, prod_support, work_support):
@@ -205,7 +211,7 @@ class Config:
     """
     Class used to handle the location of the prod, work and redirector directories.
     It was introduced to change the location of these directories at run time to facilitate
-    running this program against directories containing test data.
+    running this program with directories containing test data.
     """
 
     # Predefined root directories.
@@ -276,7 +282,6 @@ class Config:
             return cls.work_dir()
         else:
             return cls.test_dir()
-            # return cls.prod_dir() if maturity == MATURITY_PROD else cls.work_dir()
 
 
 class Macro:
