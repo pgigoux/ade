@@ -18,6 +18,7 @@ NOT_FOUND = (-1)
 def fmt(item_list, width, csv=False, csv_delimiter=','):
     """
     Format a list of items in columns of at least width characters. Use CSV format if csv=True
+    The for loops in this routine are needed to be compatible with Python 2.6.
     :param item_list: list of items to format
     :type item_list: list
     :param width: column width
@@ -30,10 +31,15 @@ def fmt(item_list, width, csv=False, csv_delimiter=','):
     :rtype: str
     """
     # print 'fmt', len(args), args
+    format_string = ''
     if csv:
-        format_string = ('{:s}' + csv_delimiter) * len(item_list)
+        for n in range(len(item_list)):
+            format_string += '{' + str(n) + ':s}' + csv_delimiter
+        # format_string = ('{0:s}' + csv_delimiter) * len(item_list)
     else:
-        format_string = ('{:' + str(width + 1) + 's} ') * len(item_list)
+        for n in range(len(item_list)):
+            format_string += '{' + str(n) + ':' + str(width + 1) + 's} '
+        # format_string = ('{0:' + str(width + 1) + 's} ') * len(item_list)
     return format_string.format(*item_list)
 
 
@@ -145,10 +151,10 @@ def print_active_ioc_dependencies(ioc_name_list, exclude_list, epics_version_lis
                 skip_exclude(ioc.name, exclude_list) or \
                 skip_epics(ioc.epics, epics_version_list):
             continue
-        print '{} {} {} {} {}'.format(ioc.name, default_version(ioc.version, ioc.maturity),
+        print '{0} {1} {2} {3} {4}'.format(ioc.name, default_version(ioc.version, ioc.maturity),
                                       ioc.boot, ioc.epics, ioc.bsp)
         for support_module in ioc.get_ioc_dependencies():
-            print '   {:16} {}'.format(support_module.name, support_module.version)
+            print '   {0:16} {1}'.format(support_module.name, support_module.version)
         print
 
 
@@ -223,7 +229,7 @@ def print_epics_version_list():
     List all EPICS versions available in prod.
     :return: None
     """
-    for epics in get_epics_versions(MATURITY_PROD):
+    for epics in sorted(get_epics_versions(MATURITY_PROD)):
         print epics
 
 
@@ -250,7 +256,7 @@ def print_ioc_list(epics_version_list):
                 ioc_dict[ioc_name] = [epics_version]
 
     # Print the dictionary (formatted).
-    format_string = '{:' + str(len_max) + '}    {}'
+    format_string = '{0:' + str(len_max) + '}    {1}'
     for ioc_name in sorted(ioc_dict):
         print format_string.format(ioc_name, ioc_dict[ioc_name])
 
@@ -278,7 +284,7 @@ def print_support_module_list(epics_version_list):
                 support_dict[support_name] = [epics_version]
 
     # Print the dictionary (formatted).
-    format_string = '{:' + str(len_max) + '}    {}'
+    format_string = '{0:' + str(len_max) + '}    {1}'
     for support_name in sorted(support_dict):
         print format_string.format(support_name, support_dict[support_name])
 
@@ -489,8 +495,7 @@ def command_line_arguments(argv):
                         default=AREA_SUPPORT,
                         help='set <area> to \'' + AREA_SUPPORT + '\' or \'' + AREA_IOC + '\'')
 
-    parser.add_argument('-i',
-                        '--ioc',
+    parser.add_argument('-i', '--ioc',
                         action='store_const',
                         dest='area',
                         const=AREA_IOC,
@@ -510,17 +515,6 @@ def command_line_arguments(argv):
                         default=[],
                         help='Restrict output to EPICS version(s)')
 
-    parser.add_argument('-r', '--report',
-                        action='store_true',
-                        dest='report',
-                        default=False,
-                        help='print dependency report (support module or IOC')
-    parser.add_argument('--csv',
-                        action='store_true',
-                        dest='csv',
-                        default=False,
-                        help='print report in csv format')
-
     parser.add_argument('--qe',
                         action='store_true',
                         dest='query_epics',
@@ -537,6 +531,18 @@ def command_line_arguments(argv):
                         default=False,
                         help='list all available ioc\'s in prod/.../ioc')
 
+    parser.add_argument('-r', '--report',
+                        action='store_true',
+                        dest='report',
+                        default=False,
+                        help='print dependency report (support module or IOC')
+
+    parser.add_argument('--csv',
+                        action='store_true',
+                        dest='csv',
+                        default=False,
+                        help='print report in csv format')
+
     parser.add_argument('-t', '--test',
                         action='store',
                         nargs=1,
@@ -549,7 +555,8 @@ def command_line_arguments(argv):
 
 if __name__ == '__main__':
 
-    # args = command_line_arguments(['-t', 'gem_sw_cp_2', '-r', 'lib'])
+    # args = command_line_arguments(['-t', 'gem_sw_cp_3', '--qi'])
+    # args = command_line_arguments(['-t', 'gem_sw_cp_3', '-r'])
     # Config.set_root_directory(args.test[0])
     # print args
 
@@ -588,14 +595,14 @@ if __name__ == '__main__':
 
     elif args.query_support:
         # list available support modules
-        print_support_module_list(epics_list)   #
+        print_support_module_list(epics_list)
 
     elif args.query_ioc:
         # list available IOC's
         print_ioc_list(epics_list)
 
     elif args.report:
-        # these are the table/matrix dependency reports
+        # table/matrix dependency reports
         if args.area == AREA_IOC:
             print_ioc_dependency_report(args.name, args.exclude, epics_list, args.csv)
         else:
