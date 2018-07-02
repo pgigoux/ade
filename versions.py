@@ -2,7 +2,6 @@
 import re
 from os import listdir, readlink
 from os import sep as directory_delimiter
-from os import curdir as current_directory
 from os.path import islink, isdir, join
 
 # Software maturity values
@@ -216,8 +215,8 @@ class Config:
 
     # Predefined root directories.
     DEFAULT_DIR = join(directory_delimiter, 'gem_sw')  # production
-    ROOT_DIR_CP = join(current_directory, 'gem_sw_cp')  # test cp
-    ROOT_DIR_MK = join(current_directory, 'gem_sw_mk')  # test mk
+    # ROOT_DIR_CP = join(current_directory, 'gem_sw_cp')  # test cp
+    # ROOT_DIR_MK = join(current_directory, 'gem_sw_mk')  # test mk
 
     # Root directory (used by other routines in this class)
     root_dir = DEFAULT_DIR
