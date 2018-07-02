@@ -353,32 +353,12 @@ class Macro:
 
 
 class Redirector:
-    # def __init__(self, exclude_list=[], epics_version=''):
-    #     """
-    #     Initializes the Redirector object. It builds the list of all IOCs in the redirector directory.
-    #     IOC objects are stored in a dictionary indexed by the ioc name.
-    #     The IOC objects contain all the information that can be extracted from the IOC links.
-    #     The IOCs whose name match any of the strings in the exclude list are not included in the IOC lists.
-    #     :param exclude_list: list of IOC's to exclude from the redirector directory
-    #     :type exclude_list: list
-    #     """
-    #     self.ioc_dict = {}
-    #     ioc_name_list = self._get_redirector_links(exclude_list)
-    #     # print ioc_name_list
-    #     for ioc_name in ioc_name_list:
-    #         # ioc = IOC(ioc_name, self._get_ioc_link(ioc_name))
-    #         ioc = IOC(ioc_name)
-    #         ioc.set_attributes_from_link(self._get_ioc_link(ioc_name))
-    #         # print ioc
-    #         if len(epics_version) == 0 or (ioc.epics == epics_version):
-    #             self.ioc_dict[ioc_name] = ioc
 
     def __init__(self):
         """
         Initializes the Redirector object. It builds the list of all IOCs in the redirector directory.
         IOC objects are stored in a dictionary indexed by the ioc name.
         The IOC objects contain all the information that can be extracted from the IOC links.
-
         """
         self.ioc_dict = {}
         ioc_name_list = self._get_redirector_links()
@@ -465,7 +445,7 @@ class IOC:
     epics          EPICS version (e.g. R3.14.12.6)
     site:          IOC site ('cp' or 'mk')
     target_name:   IOC target name, i.e. name of the directory where the software is stored (e.g. 'mcs')
-    version:       IOC version (e.g. 1-8-R314-2) or blank if maturity==work
+    version:       IOC version (e.g. 1-8-R314-2) or blank if maturity is MATURITY_WORK
     bsp            EPICS BSP (e.g. RTEMS-mvme2307)
     boot:          IOC boot image (e.g. gcal-cp-ioc.boot)
     """
