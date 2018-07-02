@@ -130,7 +130,7 @@ def get_dependencies(file_name, prod_support, work_support):
 
 def get_ioc_list(epics_version, maturity):
     """
-    Return the list of support modules available for a given EPICS version
+    Return the list of ioc's available for a given EPICS version
     :param epics_version: EPICS version
     :type epics_version: str
     :param maturity: software maturity ('prod' or 'work')
@@ -449,7 +449,7 @@ class IOC:
     boot:          IOC boot image (e.g. gcal-cp-ioc.boot)
     """
 
-    # def __init__(self, ioc_name, ioc_link):
+    # def __init__(self, ioc_name):
     def __init__(self, ioc_name):
         self.name = ioc_name
         (self.maturity, self.epics, self.site, self.target_name, self.version,
