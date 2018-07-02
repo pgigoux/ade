@@ -706,7 +706,6 @@ def print_who_depends_report(support_name_list, epics_version_list):
     :return:
     """
 
-    print support_name_list, epics_list
     # These sets are used to filter out repeated dependencies
     ioc_set = set()
     support_set = set()
@@ -862,11 +861,11 @@ if __name__ == '__main__':
     # args = command_line_arguments(['-t', 'gem_sw_cp_3', '--ls'])
     # args = command_line_arguments(['-t', 'gem_sw_cp_3', '-r', 'lib', 'motor'])
     # args = command_line_arguments(['-t', 'gem_sw_cp_3', '-i', '-r'])
-    args = command_line_arguments(['-t', 'gem_sw_cp_3', '-d', 'slalib'])
+    # args = command_line_arguments(['-t', 'gem_sw_cp_3', '-d', 'slalib'])
     # Config.set_root_directory(args.test[0])
-    print args
+    # print args
 
-    # args = command_line_arguments(sys.argv[1:])
+    args = command_line_arguments(sys.argv[1:])
 
     # Override the data directory (testing)
     if args.test:
@@ -891,7 +890,7 @@ if __name__ == '__main__':
             epics_list = [get_latest_epics_version(MATURITY_PROD)]  # use latest
     else:
         epics_list = args.epics
-    print epics_list
+    # print epics_list
 
     # Sort the EPICS list in reverse order since we want to the the newest version of EPICS first
     epics_list = sorted(epics_list, reverse=True)
