@@ -89,7 +89,7 @@ def skip_name(name, match_list):
     :rtype: bool
     """
     skip = True
-    print name, match_list
+    #print name, match_list
     if match_list:
         for s in match_list:
             if name.find(s) != NOT_FOUND:
