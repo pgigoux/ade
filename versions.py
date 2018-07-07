@@ -208,15 +208,13 @@ def get_support_module_versions(support_module_name, epics_version):
 
 class Config:
     """
-    Class used to handle the location of the prod, work and redirector directories.
-    It was introduced to change the location of these directories at run time to facilitate
-    running this program with directories containing test data.
+    Class used to handle the location of the prod, work, test and redirector directories.
+    It was introduced to group the routines to handle where the software is stored in one place,
+    and also to allow switching to directories containing test data at run time.
     """
 
-    # Predefined root directories.
+    # Default root directory.
     DEFAULT_DIR = join(directory_delimiter, 'gem_sw')  # production
-    # ROOT_DIR_CP = join(current_directory, 'gem_sw_cp')  # test cp
-    # ROOT_DIR_MK = join(current_directory, 'gem_sw_mk')  # test mk
 
     # Root directory (used by other routines in this class)
     root_dir = DEFAULT_DIR
@@ -237,6 +235,7 @@ class Config:
     @classmethod
     def prod_dir(cls):
         """
+        Return full path of the production directory
         :return: production directory
         :rtype: str
         """
@@ -245,6 +244,7 @@ class Config:
     @classmethod
     def work_dir(cls):
         """
+        Return full path of the work directory
         :return: work directory
         :rtype: str
         """
@@ -253,6 +253,7 @@ class Config:
     @classmethod
     def test_dir(cls):
         """
+        Return full path of the test directory
         :return: test directory
         :rtype: str
         """
@@ -261,6 +262,7 @@ class Config:
     @classmethod
     def redirector_dir(cls):
         """
+        Return full path of the redirector directory
         :return: redirector directory
         :rtype: str
         """
@@ -269,7 +271,7 @@ class Config:
     @classmethod
     def maturity_directory(cls, maturity):
         """
-        Return the directory for a given software maturity
+        Return the full directory path for a given software maturity
         :param maturity: software maturity (MATURITY_PROD, MATURITY_WORK or MATURITY_TEST)
         :type maturity: str
         :return: production or work directory
