@@ -571,7 +571,7 @@ def print_what_depends_report(support_name_list, epics_version_list):
         for item in sorted(ioc_dict):
             print format_string.format(str(item), str(list(ioc_dict[item])))
         if len(epics_version_list) > 1:
-            print '\n'
+            print ''
 
 
 def command_line_arguments(argv):
