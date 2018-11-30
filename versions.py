@@ -8,6 +8,7 @@ from os.path import islink, isdir, join
 MATURITY_PROD = 'prod'
 MATURITY_WORK = 'work'
 MATURITY_TEST = 'test'
+MATURITY_LIST = [MATURITY_PROD, MATURITY_WORK, MATURITY_TEST]
 
 # Site values
 SITE_CP = 'cp'
@@ -487,7 +488,11 @@ class IOC:
     def _split_ioc_link(link):
         """
         Split the link in its different components.
-        The different elements in the link ar packed in a tuple as follows:
+        It protects against links that do not follow the expected convention.
+        The software maturity is forced to MATURITY_TEST if it's not any of
+        the valid possibilities. This can happen in ill-formed links.
+
+        The different elements in the link are packed in a tuple as follows:
         0: maturity ('prod' or 'work')
         1: EPICS version (e.g. R3.14.12.6)
         2: EPICS BSP (e.g. RTEMS-mvme2307)
@@ -495,26 +500,29 @@ class IOC:
         4: IOC target name (e.g. 'mcs')
         5: IOC version (e.g. 1-8-R314-2) or blank if maturity=work
         6: IOC boot image (e.g. gcal-cp-ioc.boot)
-        :param link: file pointed to by the link in the redirector directory
+
+        :param link: link in the redirector directory
         :type link: str
         :return: seven element tuple
         :rtype: tuple
         """
         lst = link.split(directory_delimiter)
-        # print lst
-        maturity = lst[2]
+        # print len(lst), lst, lst[2]
+        maturity = lst[2] if len(lst) > 2 else MATURITY_TEST
+        if maturity not in MATURITY_LIST:
+            maturity = MATURITY_TEST
         if maturity != MATURITY_TEST:
-            epics_version = lst[3]
-            ioc_target_name = lst[5]
-            ioc_site = lst[6]
-            ioc_version = lst[7] if maturity == MATURITY_PROD else ''
+            epics_version = lst[3] if len(lst) > 3 else ''
+            ioc_target_name = lst[5] if len(lst) > 5 else ''
+            ioc_site = lst[6] if len(lst) > 6 else ''
+            ioc_version = lst[7] if len(lst) > 7 else ''
         else:
             epics_version = ''
             ioc_target_name = ''
             ioc_site = ''
             ioc_version = ''
-        epics_bsp = lst[-2]
-        ioc_boot = lst[-1]
+        epics_bsp = lst[-2] if len(lst) > 1 else ''
+        ioc_boot = lst[-1] if len(lst) > 0 else ''
         return maturity, epics_version, ioc_site, ioc_target_name, ioc_version, epics_bsp, ioc_boot
 
     def _get_ioc_release_file(self):
