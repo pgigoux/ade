@@ -515,7 +515,7 @@ class IOC:
             epics_version = lst[3] if len(lst) > 3 else ''
             ioc_target_name = lst[5] if len(lst) > 5 else ''
             ioc_site = lst[6] if len(lst) > 6 else ''
-            ioc_version = lst[7] if len(lst) > 7 else ''
+            ioc_version = lst[7] if len(lst) > 7 and maturity == MATURITY_PROD else ''
         else:
             epics_version = ''
             ioc_target_name = ''
