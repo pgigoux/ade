@@ -55,7 +55,7 @@ def extract_support(env, ioc_name, top):
             line = line.split('#')[0].strip()
             if line:
                 try:
-                    var_name, value = line.split('=')
+                    var_name, value = [text.strip() for text in line.split('=')]
                     expanded = expand_variable(var_dict, value)
                     if var_name not in EXCLUDE_MODULES and os.path.exists(os.path.join(expanded, 'lib')):
                         release_info.append(Support(var_name, expanded, extract_version(expanded)))
