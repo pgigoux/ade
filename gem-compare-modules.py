@@ -16,22 +16,40 @@ Usage:
   {filename} -h | --help
 
 Options:
-  -h --help           Show this screen
-  -v --verbose        Be verbose. This can be helpful if the script can't seem to find an IOC
-  -e --epics=EPICS    Defaults to $GEM_EPICS_RELEASE. If the variable is not declared, then this argument becomes mandatory.
-  -s --site=SITE      Defaults to $GEM_SITE. If the variable is not declared, then this argument becomes mandatory..
-  IOC-VERSION         Name of an IOC and version to use as the source. Version can either be a numeric one (taken out of $PROD/ioc/IOC), 'current', 'work', or a path to the $TOP directory of the IOC. If no version is provided, 'current' is assumed.
-                      If 'current' is given, the $TOP will be discovered making use of the links at the redirector, and then IOC must match the system name in there.
+  -h, --help         Show this screen
+  -v, --verbose      Be verbose. This can be helpful if the script can't seem to find an IOC
+  -e, --epics=EPICS  Defaults to $GEM_EPICS_RELEASE. If the variable is not declared, then this
+                     argument becomes mandatory.
+  -s, --site=SITE    Defaults to $GEM_SITE. If the variable is not declared, then this argument
+                     becomes mandatory.
+  IOC:VERSION        Name of an IOC and Version to use as the source.
+
+                     IOC may be either the target name (eg. ag), or the full ioc name (eg. ag-mk-ioc)
+                     If the site does not match the default one, it can be added to the name (eg. ag/mk)
+
+                     Additionally, a "+" can be prepended to the name, making it the "golden standard"
+                     for comparisons. This is useful when comparing more than two systems. Only the first
+                     ioc marked as standard will be taken into account.
+
+                     Version can be either:
+                       - a numeric release (will look up under $PROD)
+                       - 'current' (looks under the "redirector" dir)
+                       - 'work'
+                       - an arbitrary path to the $TOP directory of the IOC.
+                     If no version is provided, 'current' is assumed.
+
+
 """
 
 Environment = namedtuple('Environment', 'root release site')
 Support = namedtuple('Support', 'var path version')
-IocData = namedtuple('IocData', 'unique_id target full_name site top')
+IocData = namedtuple('IocData', 'unique_id target full_name site top golden')
 
 ROOT = '/gem_sw'
-RESET_COLOR  = '\x1b[0m'
-BRIGHT_GREEN = '\x1b[38;5;46m'
-BRIGHT_RED   = '\x1b[38;5;196m'
+RESET_COLOR   = '\x1b[0m'
+BRIGHT_GREEN  = '\x1b[38;2;0;255;0m'
+BRIGHT_YELLOW = '\x1b[38;2;255;255;0m'
+BRIGHT_RED    = '\x1b[38;2;255;0;0m'
 
 log = None
 def log_ver(text, verbose):
@@ -83,6 +101,9 @@ class IocDecoder:
     def decode(self, ioc_ver):
         ioc_name_raw, _, version = ioc_ver.partition(':')
         ioc_target, _, ioc_site_maybe = ioc_name_raw.partition('/')
+        golden = ioc_target.startswith('+')
+        if golden:
+            ioc_target = ioc_target[1:]
         ioc_site = ioc_site_maybe or self.env.site
         ioc_name = get_ioc_from_target(ioc_target, ioc_site)
 
@@ -118,20 +139,42 @@ class IocDecoder:
                        target=ioc_target,
                        full_name=ioc_name,
                        site=ioc_site,
-                       top=path)
+                       top=path,
+                       golden=golden)
+
+def goldenize(text, do):
+    return f"{BRIGHT_YELLOW}{text}{RESET_COLOR}" if do else text
 
 def print_report(ioc_details, env):
+    golden_bits = [ioc.golden for ioc in ioc_details]
+    there_is_standard = any(golden_bits)
+    if there_is_standard:
+        std_index = golden_bits.index(True)
     ioc_names = [ioc.unique_id for ioc in ioc_details]
     widest_name = max(len(uid) for uid in ioc_names)
+    printable_names = [goldenize(name.center(widest[name]), details.golden)
+                            for name, details
+                            in zip(ioc_names, ioc_details)]
     for ioc in ioc_details:
         log(f"{ioc.unique_id:{widest_name}}: {ioc.top}")
 
     widest_module = max(len(mname) for mname in all_modules)
-    print(f"{'':{widest_module}} {'  '.join(ioc.center(widest[ioc]) for ioc in ioc_names)}")
+    print(f"{'':{widest_module}} {'  '.join(printable_names)}")
     for mod in sorted(all_modules):
-        elements = [f"{ioc_info[ioc].get(mod, '---'):{widest[ioc]}}" for ioc in ioc_names]
-        color = BRIGHT_RED if len(set(e.strip() for e in elements)) != 1 else ''
-        print(f"{color}{mod:{widest_module}} {'  '.join(elements)}{RESET_COLOR}")
+        raw_elements = [ioc_info[ioc].get(mod, '---') for ioc in ioc_names]
+        padded_elements = [f"{raw:{widest[ioc]}}" for raw,ioc in zip(raw_elements, ioc_names)]
+        diff = len(set(raw_elements)) != 1
+        if diff:
+            mod_color = BRIGHT_RED
+            std = raw_elements[std_index] if there_is_standard else None
+            printable_elements = [(padded if raw == std else
+                                      f"{BRIGHT_RED}{padded}{RESET_COLOR}")
+                                  for (raw, padded) in zip(raw_elements, padded_elements)]
+        else:
+            mod_color = ''
+            printable_elements = padded_elements
+
+        print(f"{mod_color}{mod:{widest_module}}{RESET_COLOR} {'  '.join(printable_elements)}")
 
 if __name__ == '__main__':
     args = docopt(__doc__, version="Module Compare 1.0", options_first=True)
