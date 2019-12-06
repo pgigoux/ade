@@ -120,6 +120,19 @@ class IocDecoder:
                        site=ioc_site,
                        top=path)
 
+def print_report(ioc_details, env):
+    ioc_names = [ioc.unique_id for ioc in ioc_details]
+    widest_name = max(len(uid) for uid in ioc_names)
+    for ioc in ioc_details:
+        log(f"{ioc.unique_id:{widest_name}}: {ioc.top}")
+
+    widest_module = max(len(mname) for mname in all_modules)
+    print(f"{'':{widest_module}} {'  '.join(ioc.center(widest[ioc]) for ioc in ioc_names)}")
+    for mod in sorted(all_modules):
+        elements = [f"{ioc_info[ioc].get(mod, '---'):{widest[ioc]}}" for ioc in ioc_names]
+        color = BRIGHT_RED if len(set(e.strip() for e in elements)) != 1 else ''
+        print(f"{color}{mod:{widest_module}} {'  '.join(elements)}{RESET_COLOR}")
+
 if __name__ == '__main__':
     args = docopt(__doc__, version="Module Compare 1.0", options_first=True)
 
@@ -164,14 +177,4 @@ if __name__ == '__main__':
         print(e)
         sys.exit(-1)
 
-    ioc_names = [ioc.unique_id for ioc in ioc_details]
-    widest_name = max(len(uid) for uid in ioc_names)
-    for ioc in ioc_details:
-        log(f"{ioc.unique_id:{widest_name}}: {ioc.top}")
-
-    widest_module = max(len(mname) for mname in all_modules)
-    print(f"{'':{widest_module}} {'  '.join(ioc.center(widest[ioc]) for ioc in ioc_names)}")
-    for mod in sorted(all_modules):
-        elements = [f"{ioc_info[ioc].get(mod, '---'):{widest[ioc]}}" for ioc in ioc_names]
-        color = BRIGHT_RED if len(set(e.strip() for e in elements)) != 1 else ''
-        print(f"{color}{mod:{widest_module}} {'  '.join(elements)}{RESET_COLOR}")
+    print_report(ioc_details, env)
