@@ -26,6 +26,7 @@ Options:
 
 Environment = namedtuple('Environment', 'root release site')
 Support = namedtuple('Support', 'var path version')
+IocData = namedtuple('IocData', 'unique_id target full_name site top')
 
 ROOT = '/gem_sw'
 RESET_COLOR  = '\x1b[0m'
@@ -70,33 +71,53 @@ def extract_support(env, ioc_name, top):
 def mod_version(mod):
     return mod.version if mod.version is not None else mod.path
 
-def discover_top(env, ioc_ver):
-    ioc_name, sep, version = ioc_ver.partition(':')
-    if not version:
-        version = 'current'
+def get_ioc_from_target(target, site):
+    return target if target.endswith('-ioc') else f"{target}-{site}-ioc"
 
-    path = None
-    if version.lower() == 'current':
-        link = os.path.join(env.root, 'prod', 'redirector', ioc_name)
-        if not os.path.exists(link):
-            raise IOError(f"Error finding {ioc_name}: No such link under the redirector")
-        path = os.path.realpath(link)
-        while link != '/':
-            path, last = os.path.split(path)
-            if last == 'bin':
-                break
-        else:
-            raise IOError(f"Error finding {ioc_name}: Non-standard deployment")
-    elif version.lower() == 'work':
-        path = os.path.join(env.root, 'work', env.release, 'ioc', ioc_name, env.site)
-    elif os.path.exists(version):
-        path = os.path.abspath(version)
-    else: # Assume this is a numeric version
-        path = os.path.join(env.root, 'prod', env.release, 'ioc', ioc_name, env.site, version)
-    if not os.path.exists(path):
-        raise IOError(f"Error finding {ioc_name}: Path does not exist '{path}'")
+class IocDecoder:
+    def __init__(self, env):
+        self.seen = defaultdict(int)
+        self.env = env
 
-    return (ioc_name, path)
+    def decode(self, ioc_ver):
+        ioc_name_raw, _, version = ioc_ver.partition(':')
+        ioc_target, _, ioc_site_maybe = ioc_name_raw.partition('/')
+        ioc_site = ioc_site_maybe or self.env.site
+        ioc_name = get_ioc_from_target(ioc_target, ioc_site)
+
+        if not version:
+            version = 'current'
+
+        path = None
+        if version.lower() == 'current':
+            link = os.path.join(self.env.root, 'prod', 'redirector', ioc_name)
+            if not os.path.exists(link):
+                raise IOError(f"Error finding '{ioc_ver}': No such link under the redirector")
+            path = os.path.realpath(link)
+            while link != '/':
+                path, last = os.path.split(path)
+                if last == 'bin':
+                    break
+            else:
+                raise IOError(f"Error finding '{ioc_ver}': Non-standard deployment")
+        elif version.lower() == 'work':
+            path = os.path.join(self.env.root, 'work', self.env.release, 'ioc', ioc_target, ioc_site)
+        elif os.path.exists(version):
+            path = os.path.abspath(version)
+        else: # Assume this is a numeric version
+            path = os.path.join(self.env.root, 'prod', self.env.release, 'ioc', ioc_target, ioc_site, version)
+        if not os.path.exists(path):
+            raise IOError(f"Error finding '{ioc_ver}': Path does not exist '{path}'")
+
+        seen = self.seen[ioc_target]
+        unique = ioc_target if not seen else f'{ioc_target}({seen + 1})'
+        self.seen[ioc_target] += 1
+
+        return IocData(unique_id=unique,
+                       target=ioc_target,
+                       full_name=ioc_name,
+                       site=ioc_site,
+                       top=path)
 
 if __name__ == '__main__':
     args = docopt(__doc__, version="Module Compare 1.0", options_first=True)
@@ -116,8 +137,10 @@ if __name__ == '__main__':
 
     env = Environment(ROOT, release, site)
 
+    ioc_decoder = IocDecoder(env)
+
     try:
-        ioc_paths = list(map(partial(discover_top, env), args['IOC:VERSION']))
+        ioc_details = list(map(ioc_decoder.decode, args['IOC:VERSION']))
     except (IOError, NotImplementedError) as e:
         print(e)
         sys.exit(-1)
@@ -126,21 +149,25 @@ if __name__ == '__main__':
     widest   = {}
     all_modules = set()
     try:
-        for ioc_name, top in ioc_paths:
+        for ioc in ioc_details:
             dct = {}
-            mod_list = extract_support(env, ioc_name, top)
-            widest[ioc_name] = len(ioc_name)
+            mod_list = extract_support(env, ioc.target, ioc.top)
+            widest[ioc.unique_id] = len(ioc.unique_id)
             for mod in mod_list:
                 version = mod_version(mod)
-                widest[ioc_name] = max(len(version), widest[ioc_name])
+                widest[ioc.unique_id] = max(len(version), widest[ioc.unique_id])
                 dct[mod.var] = version
                 all_modules.add(mod.var)
-            ioc_info[ioc_name] = dct
+            ioc_info[ioc.unique_id] = dct
     except IOError as e:
         print(e)
         sys.exit(-1)
 
-    ioc_names = [ioc_path[0] for ioc_path in ioc_paths]
+    ioc_names = [ioc.unique_id for ioc in ioc_details]
+    widest_name = max(len(uid) for uid in ioc_names)
+    for ioc in ioc_details:
+        log(f"{ioc.unique_id:{widest_name}}: {ioc.top}")
+
     widest_module = max(len(mname) for mname in all_modules)
     print(f"{'':{widest_module}} {'  '.join(ioc.center(widest[ioc]) for ioc in ioc_names)}")
     for mod in sorted(all_modules):
