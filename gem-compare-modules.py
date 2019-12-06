@@ -31,6 +31,7 @@ IocData = namedtuple('IocData', 'unique_id target full_name site top')
 ROOT = '/gem_sw'
 RESET_COLOR  = '\x1b[0m'
 BRIGHT_GREEN = '\x1b[38;5;46m'
+BRIGHT_RED   = '\x1b[38;5;196m'
 
 log = None
 def log_ver(text, verbose):
@@ -172,5 +173,5 @@ if __name__ == '__main__':
     print(f"{'':{widest_module}} {'  '.join(ioc.center(widest[ioc]) for ioc in ioc_names)}")
     for mod in sorted(all_modules):
         elements = [f"{ioc_info[ioc].get(mod, '---'):{widest[ioc]}}" for ioc in ioc_names]
-        color = BRIGHT_GREEN if len(set(e.strip() for e in elements)) == 1 else ''
+        color = BRIGHT_RED if len(set(e.strip() for e in elements)) != 1 else ''
         print(f"{color}{mod:{widest_module}} {'  '.join(elements)}{RESET_COLOR}")
