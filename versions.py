@@ -1,4 +1,15 @@
 #!/usr/bin/python
+"""
+Auxiliary routines and classes used to handle version information.
+
+Classes:
+    Redirector: redirector links
+    IOC: ioc version information
+    SupportModule: support module version information
+    Macro: make file macro substitutions
+    Config: configuration; to support testing
+"""
+import os
 import re
 from os import listdir, readlink
 from os import sep as directory_delimiter
@@ -20,6 +31,131 @@ AREA_IOC = 'ioc'
 AREA_SUPPORT = 'support'
 AREA_LIST = [AREA_IOC, AREA_SUPPORT]
 
+# EPICS version environment variable
+ENV_EPICS_VERSION = 'GEM_EPICS_RELEASE'
+
+# Value used to indicate all versions of EPICS in reports
+EPICS_ALL = 'all'
+
+# Value returned by str.find() where there's no match
+NOT_FOUND = -1
+
+
+def fmt(item_list, width, csv=False, csv_delimiter=','):
+    """
+    Format a list of items in columns of at least width characters (same with for all elements).
+    This routine supports output in csv format as well as variable widths.
+    :param item_list: list of items to format
+    :type item_list: list
+    :param width: column width, or None if no fixed width is required
+    :type width: int
+    :param csv: format as csv output
+    :type csv: bool
+    :param csv_delimiter: delimiter to use in csv output
+    :type csv_delimiter: str
+    :return: formatted line
+    :rtype: str
+    """
+    format_string = ''
+    if csv:
+        for n in range(len(item_list)):
+            format_string += '{:s}' + csv_delimiter
+    else:
+        for n in range(len(item_list)):
+            if width is None:
+                format_string += '{:s} '
+            else:
+                format_string += '{:' + str(width + 1) + 's} '
+    return format_string.format(*item_list)
+
+
+def fmt_list(item_list, width_list, csv=False, csv_delimiter=','):
+    """
+    Format a list of items in columns of at least width characters (separate width for each element).
+    This routine supports output in csv format as well as variable widths.
+    :param item_list: list of items to format
+    :type item_list: list
+    :param width_list: list of column widths (None if no fixed width is required)
+    :type width_list: list
+    :param csv: format as csv output
+    :type csv: bool
+    :param csv_delimiter: delimiter to use in csv output
+    :type csv_delimiter: str
+    :return: formatted line
+    :rtype: str
+    """
+    # The item and width lists must be of the same size
+    if len(item_list) != len(width_list):
+        raise IndexError
+
+    format_string = ''
+    if csv:
+        return fmt(item_list, 0, csv, csv_delimiter)
+    else:
+        for n in range(len(item_list)):
+            # format_string += '{' + str(n) + ':' + str(width_list[n] + 1) + 's} '
+            if width_list[n] is None:
+                format_string += '{:s} '
+            else:
+                format_string += '{:' + str(width_list[n] + 1) + 's} '
+    return format_string.format(*item_list)
+
+
+def skip_name(name, match_list):
+    """
+    Auxiliary routine used to skip (ignore) an IOC or support module from the output.
+    A name won't be skipped if any string in the match list is a substring of the name.
+    No items will be ignored if the match list is empty.
+    :param name: name to check
+    :type name: str
+    :param match_list: list of strings that should be allowed in the output
+    :type match_list: list
+    :return: boolean value indicating whether the name should be included or not
+    :rtype: bool
+    """
+    skip = True
+    if match_list:
+        for s in match_list:
+            if name.find(s) != NOT_FOUND:
+                skip = False
+        return skip
+    else:
+        return False
+
+
+def skip_exclude(name, exclude_list):
+    """
+    Auxiliary routine used to skip (exclude) an IOC or support module from the output.
+    No items will be excluded if the exclude list is empty.
+    :param name: name to check
+    :type name: str
+    :param exclude_list: list of strings that should be excluded from the output
+    :type exclude_list: list
+    :return: boolean value indicating whether the name should be excluded or not
+    :rtype: bool
+    """
+    for s in exclude_list:
+        if name.find(s) != NOT_FOUND:
+            return True
+    return False
+
+
+def skip_epics(epics_version, epics_version_list):
+    """
+    Auxiliary routine used to skip an ioc or support module from the output based on its EPICS version.
+    It will return false if the epics version list is empty or contains EPICS_ALL.
+    :param epics_version: ioc or support module epics version
+    :type epics_version: str
+    :param epics_version_list: list
+    :type epics_version_list: list
+    :return: boolean value indicating whether the epics version should be excluded or not
+    :rtype: bool
+    """
+    if not epics_version_list or EPICS_ALL in epics_version_list:
+        return False
+    else:
+        return epics_version not in epics_version_list
+
 
 def get_ioc_name(ioc_target_name, site):
     """
@@ -35,7 +171,7 @@ def get_ioc_name(ioc_target_name, site):
     return ioc_target_name + '-' + site + '-' + 'ioc'
 
 
-def default_version(version, maturity):
+def default_ioc_version(version, maturity):
     """
     Return the version number passed as an argument if the maturity is MATURITY_PROD, i.e.
     when a version is supposed to be defined. Otherwise return the maturity as the version.
@@ -75,6 +211,20 @@ def get_latest_epics_version(maturity):
     """
     epics_list = sorted(get_epics_versions(maturity), reverse=True)
     return epics_list[0] if epics_list else []
+
+
+def get_default_epics_version(maturity):
+    """
+    Return the default version of EPICS in use.
+    :param maturity: software maturity
+    :type maturity: str
+    :return:
+    """
+    try:
+        version = os.environ[ENV_EPICS_VERSION]
+    except KeyError:
+        version = get_latest_epics_version(maturity)
+    return version
 
 
 def get_dependencies(file_name, prod_support, work_support):
@@ -298,7 +448,7 @@ class Macro:
         The macro regular expression is precompiled to increase speed.
         """
         self.macro_dictionary = {}
-        self.pattern = re.compile('\$\([a-zA-Z0-9_]+\)')
+        self.pattern = re.compile(r'\$\([a-zA-Z0-9_]+\)')
 
     @staticmethod
     def _cleaned_macro(macro):
@@ -328,7 +478,7 @@ class Macro:
                 macro_name = self._cleaned_macro(match.group())
                 # print '++ match', macro_name, self.macro_dictionary
                 if macro_name in self.macro_dictionary:
-                    pattern = '\$\(' + macro_name + '\)'
+                    pattern = r'\$\(' + macro_name + r'\)'
                     line = re.sub(pattern, self.macro_dictionary[macro_name], line)
         return line
 
@@ -405,8 +555,6 @@ class Redirector:
     def _get_redirector_links():
         """
         Return the list of links in the redirector directory
-        :param exclude_list: list of IOCs to exclude from the list
-        :type exclude_list: list
         :return: list of links
         :rtype: list
         """
