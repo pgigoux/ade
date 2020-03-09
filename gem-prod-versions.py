@@ -343,10 +343,9 @@ def command_line_arguments(argv):
     """
 
     # Define text that will be printed at the end of the '-h' option
-    epilog_text = """If no arguments are supplied, the list of all ioc's in the """ + \
-                  """ redirector directory will be printed.""" + \
-                  """ The default area is '""" + AREA_SUPPORT + """'.""" + \
-                  """ The latest version of EPICS will be used if no version is specified."""
+    epilog_text = """Print version information of ioc\'s and support packages in the prod directory.""" + \
+                  """If no arguments are supplied, the dependency matrix for support modules is generated. """ + \
+                  """ The version of EPICS defined by GEM_EPICS_RELEASE is used by default."""
 
     parser = ArgumentParser(epilog=epilog_text)
 
@@ -355,12 +354,6 @@ def command_line_arguments(argv):
                         dest='name',
                         default=[],
                         help='ioc or support module name')
-
-    parser.add_argument('-l', '--links',
-                        action='store_true',
-                        dest='links',
-                        default=False,
-                        help='print raw links (same output as configure-ioc -L)')
 
     parser.add_argument('-a', '--area',
                         action='store',
