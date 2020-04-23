@@ -41,6 +41,36 @@ EPICS_ALL = 'all'
 NOT_FOUND = -1
 
 
+def _try_int(s):
+    """
+    Auxiliary routine used by sort_by_name_and_version() to convert string (hopefully)
+    containing an integer number into an integer.
+    The string will be returned unaltered if the conversion fails.
+    @param s: input string
+    @type s: str
+    @return: integer number
+    @rtype: int
+    """
+    try:
+        return int(s)
+    except ValueError:
+        return s
+
+
+def sort_by_name_and_version(tuple_list, delimiter='-'):
+    """
+    Sort a list of tuples containing a module name and version number in natural (human) order.
+    For instance [('mod1', '1-1'), ('mod2', '1-12'), ('mod1, '1-2')] will be sorted as
+    [('mod1', '1-1'), ('mod2', '1-2'), ('mod1, '1-12')]
+    @param tuple_list: list of tuples of the form (name, version)
+    @type tuple_list: list
+    @param delimiter: version delimiter '-' for '1-2-3', '.' for '1.2.3'
+    @return: sorted list
+    @rtype: list
+    """
+    return sorted(tuple_list, key=lambda x: (x[0], map(_try_int, x[1].split(delimiter))))
+
+
 def fmt(item_list, width, csv=False, csv_delimiter=','):
     """
     Format a list of items in columns of at least width characters (same with for all elements).
@@ -60,7 +90,7 @@ def fmt(item_list, width, csv=False, csv_delimiter=','):
     if csv:
         for n in range(len(item_list)):
             # format_string += '{:s}' + csv_delimiter
-            format_string += '{' + str(n) + ':s}' + csv_delimiter
+            format_string += '\'{' + str(n) + ':s}' + csv_delimiter
     else:
         for n in range(len(item_list)):
             if width is None:

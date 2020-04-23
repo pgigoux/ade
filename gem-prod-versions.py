@@ -11,7 +11,7 @@ from versions import get_epics_versions, get_default_epics_version
 from versions import get_ioc_list, get_ioc_versions
 from versions import get_support_module_list, get_support_module_versions
 from versions import skip_name, skip_exclude
-from versions import fmt, fmt_list
+from versions import fmt, fmt_list, sort_by_name_and_version
 
 
 def print_epics_version_list():
@@ -239,15 +239,16 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
     # Print title. The EPICS version will show up in the leftmost columns. This column will be
     # wide enough for the name and version of the support module or ioc.
     print fmt([epics_version], first_column_length, csv_output) + \
-          fmt([' '], len_version_max, csv_output) + \
+          fmt(['Version'], len_version_max, csv_output) + \
           fmt_list(referenced_names, column_length_list, csv_output)
 
-    # Print support modules pr ioc's. There will be one line per item. The first two columns
+    # Print support modules or iocs. There will be one line per item. The first two columns
     # will have the name and version, followed by the versions of the dependency versions.
     # Only support modules and ioc's with dependencies will be listed in the output.
-    for name, version in sorted(dep_dict):
+    # for name, version in sorted(dep_dict.keys()):
+    for name, version in sort_by_name_and_version(dep_dict.keys()):
 
-        # print support_name, support_version
+        # The dictionary key is the tuple (name, version)
         key = (name, version)
 
         # Skip modules with no dependencies
