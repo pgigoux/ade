@@ -59,13 +59,16 @@ def fmt(item_list, width, csv=False, csv_delimiter=','):
     format_string = ''
     if csv:
         for n in range(len(item_list)):
-            format_string += '{:s}' + csv_delimiter
+            # format_string += '{:s}' + csv_delimiter
+            format_string += '{' + str(n) + ':s}' + csv_delimiter
     else:
         for n in range(len(item_list)):
             if width is None:
-                format_string += '{:s} '
+                # format_string += '{:s} '
+                format_string += '{' + str(n) + ':s} '
             else:
-                format_string += '{:' + str(width + 1) + 's} '
+                # format_string += '{:' + str(width + 1) + 's} '
+                format_string += '{' + str(n) + ':' + str(width + 1) + 's} '
     return format_string.format(*item_list)
 
 
@@ -95,9 +98,11 @@ def fmt_list(item_list, width_list, csv=False, csv_delimiter=','):
         for n in range(len(item_list)):
             # format_string += '{' + str(n) + ':' + str(width_list[n] + 1) + 's} '
             if width_list[n] is None:
-                format_string += '{:s} '
+                # format_string += '{:s} '
+                format_string += '{' + str(n) + ':s} '
             else:
-                format_string += '{:' + str(width_list[n] + 1) + 's} '
+                # format_string += '{:' + str(width_list[n] + 1) + 's} '
+                format_string += '{' + str(n) + ':' + str(width_list[n] + 1) + 's} '
     return format_string.format(*item_list)
 
 
@@ -628,7 +633,7 @@ class IOC:
         :return: string representation of the IOC object
         :rtype: str
         """
-        format_string = 'name={}, maturity={}, epics={}, site={}, target={}, version={}, bsp={}, boot={}'
+        format_string = 'name={0}, maturity={1}, epics={2}, site={3}, target={4}, version={5}, bsp={6}, boot={7}'
         return format_string.format(self.name, self.maturity, self.epics, self.site, self.target_name,
                                     self.version if self.version else 'n/a', self.bsp, self.boot)
 

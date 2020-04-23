@@ -46,7 +46,7 @@ def print_ioc_list(epics_version_list):
                 ioc_dict[ioc_name] = [epics_version]
 
     # Print the dictionary (formatted).
-    format_string = '{:' + str(len_max) + '}    {}'
+    format_string = '{0:' + str(len_max) + '}    {1}'
     for ioc_name in sorted(ioc_dict):
         print format_string.format(ioc_name, ioc_dict[ioc_name])
 
@@ -72,7 +72,7 @@ def print_support_module_list(epics_version_list):
                 support_dict[support_name] = [epics_version]
 
     # Print the dictionary
-    format_string = '{:' + str(len_max) + '}    {}'
+    format_string = '{0:' + str(len_max) + '}    {1}'
     for support_name in sorted(support_dict):
         print format_string.format(support_name, support_dict[support_name])
 
@@ -323,7 +323,7 @@ def print_what_depends_report(support_name_list, epics_version_list):
         # print ioc_dict
 
         # Format output
-        format_string = ' ' * 3 + '{:' + str(len_max) + '}    {}'
+        format_string = ' ' * 3 + '{0:' + str(len_max) + '}    {1}'
         print epics_version
         for item in sorted(support_dict):
             print format_string.format(str(item), str(list(support_dict[item])))
@@ -353,7 +353,7 @@ def command_line_arguments(argv):
                         nargs='*',
                         dest='name',
                         default=[],
-                        help='ioc or support module name')
+                        help='list of ioc or support module names')
 
     parser.add_argument('-a', '--area',
                         action='store',
@@ -426,17 +426,19 @@ def command_line_arguments(argv):
 if __name__ == '__main__':
 
     # Test code
-    # test_dir = '/Users/pgigoux/PycharmProjects/ade/gem_sw_cp_2'
+    # test_dir = '/Users/pgigoux/PycharmProjects/ade/gem_sw_cp_4'
     # args = command_line_arguments(['-h'])
     # args = command_line_arguments(['-t', test_dir])
     # args = command_line_arguments(['-t', test_dir, '--qe'])
     # args = command_line_arguments(['-t', test_dir, '--qs'])
     # args = command_line_arguments(['-t', test_dir, '--qi'])
     # args = command_line_arguments(['-t', test_dir, '--qi', '-e', 'all'])
-    # args = command_line_arguments(['-t', test_dir, '-r'])
-    # args = command_line_arguments(['-t', test_dir, '-i', '-r'])
-    # args = command_line_arguments(['-t', test_dir, '-r', 'lib', 'motor'])
-    # args = command_line_arguments(['-t', test_dir, '-d', 'slalib', 'timelib', 'astlib', '-e', 'all'])
+    # args = command_line_arguments(['-t', test_dir, '-i'])
+    # args = command_line_arguments(['-t', test_dir])
+    # args = command_line_arguments(['-t', test_dir, 'astlib', 'motor'])
+    # args = command_line_arguments(['-t', test_dir, '-i', 'crcs', 'motor'])
+    # args = command_line_arguments(['-t', test_dir, '-d', 'timelib', 'astlib', 'motor'])
+    # args = command_line_arguments(['-t', test_dir, '-d', 'timelib', 'astlib'])
 
     args = command_line_arguments(sys.argv[1:])
 

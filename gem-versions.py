@@ -59,10 +59,10 @@ def print_active_ioc_dependencies(ioc_name_list, exclude_list, epics_version_lis
                 skip_exclude(ioc.name, exclude_list) or \
                 skip_epics(ioc.epics, epics_version_list):
             continue
-        print '{} {} {} {} {}'.format(ioc.name, default_ioc_version(ioc.version, ioc.maturity),
+        print '{0} {1} {2} {3} {4}'.format(ioc.name, default_ioc_version(ioc.version, ioc.maturity),
                                            ioc.boot, ioc.epics, ioc.bsp)
         for support_module in ioc.get_ioc_dependencies():
-            print '   {:16} {}'.format(support_module.name, support_module.version)
+            print '   {0:16} {1}'.format(support_module.name, support_module.version)
         print
 
 
@@ -119,11 +119,11 @@ def print_active_support_module_dependencies(support_name_list, exclude_list, ep
             # print support module dependencies
             for dep in sup.get_support_module_dependencies():
                 assert (isinstance(dep, SupportModule))
-                print '   {:16} {:16} {}'.format(dep.name, default_ioc_version(dep.version, dep.maturity), dep.epics)
+                print '   {0:16} {1:16} {2}'.format(dep.name, default_ioc_version(dep.version, dep.maturity), dep.epics)
             # print ioc's that depend on the support module
             for ioc in ioc_dict[sup_id]:
                 assert (isinstance(ioc, IOC))
-                print '   {:16} {:16} {}'.format(ioc.name, default_ioc_version(ioc.version, ioc.maturity), ioc.epics)
+                print '   {0:16} {1:16} {2}'.format(ioc.name, default_ioc_version(ioc.version, ioc.maturity), ioc.epics)
             print
     else:
         print 'support module(s) \'' + str(support_name_list) + '\'' + \
@@ -151,7 +151,7 @@ def command_line_arguments(argv):
                         nargs='*',
                         dest='name',
                         default=[],
-                        help='ioc or support module name(s)')
+                        help='list of ioc or support module names')
 
     parser.add_argument('-l', '--links',
                         action='store_true',
