@@ -13,6 +13,9 @@ from versions import get_support_module_list, get_support_module_versions
 from versions import skip_name, skip_exclude
 from versions import fmt, fmt_list, sort_by_name_and_version
 
+# String that will be appended to the support module or ioc name if it doesn't have any dependencies
+NO_DEP_MARK = '(-)'
+
 
 def print_epics_version_list():
     """
@@ -157,7 +160,6 @@ def print_support_module_dependency_report(support_name_list, exclude_list, epic
                 sup = SupportModule(support_name, support_version, epics_version, MATURITY_PROD)
                 dep_dict[(support_name, support_version)] = sup.get_support_module_dependencies()
 
-        # print dep_list
         _print_dependency_report(dep_dict, epics_version, csv_output)
 
         if len(epics_list) > 1:
@@ -234,7 +236,8 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
     # print column_length_list
 
     # The length of the first column will also depend on the EPICS version length
-    first_column_length = max(len_name_max, len(epics_version))
+    # Add the length of the no dependencies mark at this point
+    first_column_length = max(len_name_max, len(epics_version)) + len(NO_DEP_MARK)
 
     # Print title. The EPICS version will show up in the leftmost columns. This column will be
     # wide enough for the name and version of the support module or ioc.
@@ -251,9 +254,9 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
         # The dictionary key is the tuple (name, version)
         key = (name, version)
 
-        # Skip modules with no dependencies
-        # if len(dep_names[key]) == 0:  # no dependencies
-        #     continue
+        # Mark those modules with no dependencies so they are easy to identify in the output
+        if len(dep_names[key]) == 0:
+            name += NO_DEP_MARK
 
         # Loop over the referenced dependencies (the report columns).
         # Trap those that are not a dependency.
@@ -427,7 +430,7 @@ def command_line_arguments(argv):
 if __name__ == '__main__':
 
     # Test code
-    test_dir = '/Users/pgigoux/PycharmProjects/ade/gem_sw_cp_4'
+    # test_dir = '/Users/pgigoux/PycharmProjects/ade/gem_sw_cp_5'
     # args = command_line_arguments(['-h'])
     # args = command_line_arguments(['-t', test_dir])
     # args = command_line_arguments(['-t', test_dir, '--qe'])
@@ -436,6 +439,7 @@ if __name__ == '__main__':
     # args = command_line_arguments(['-t', test_dir, '--qi', '-e', 'all'])
     # args = command_line_arguments(['-t', test_dir, '-i'])
     # args = command_line_arguments(['-t', test_dir])
+    # args = command_line_arguments(['-t', test_dir, '--csv'])
     # args = command_line_arguments(['-t', test_dir, 'astlib', 'motor'])
     # args = command_line_arguments(['-t', test_dir, '-i', 'crcs', 'motor'])
     # args = command_line_arguments(['-t', test_dir, '-d', 'timelib', 'astlib', 'motor'])
