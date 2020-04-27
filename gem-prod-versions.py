@@ -239,7 +239,7 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
     # Print title. The EPICS version will show up in the leftmost columns. This column will be
     # wide enough for the name and version of the support module or ioc.
     print fmt([epics_version], first_column_length, csv_output) + \
-          fmt(['Version'], len_version_max, csv_output) + \
+          fmt(['Latest version'], len_version_max, csv_output) + \
           fmt_list(referenced_names, column_length_list, csv_output)
 
     # Print support modules or iocs. There will be one line per item. The first two columns
@@ -252,8 +252,8 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
         key = (name, version)
 
         # Skip modules with no dependencies
-        if len(dep_names[key]) == 0:  # no dependencies
-            continue
+        # if len(dep_names[key]) == 0:  # no dependencies
+        #     continue
 
         # Loop over the referenced dependencies (the report columns).
         # Trap those that are not a dependency.
@@ -427,7 +427,7 @@ def command_line_arguments(argv):
 if __name__ == '__main__':
 
     # Test code
-    # test_dir = '/Users/pgigoux/PycharmProjects/ade/gem_sw_cp_4'
+    test_dir = '/Users/pgigoux/PycharmProjects/ade/gem_sw_cp_4'
     # args = command_line_arguments(['-h'])
     # args = command_line_arguments(['-t', test_dir])
     # args = command_line_arguments(['-t', test_dir, '--qe'])
