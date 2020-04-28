@@ -16,6 +16,13 @@ from versions import fmt, fmt_list, sort_by_name_and_version
 # String that will be appended to the support module or ioc name if it doesn't have any dependencies
 NO_DEP_MARK = '(-)'
 
+# Title that will be used in the column containg support or ioc version
+VERSION_TITLE = 'Latest_Version'
+
+# String used to mark empty dependency columns in text and csv outputs
+EMPTY_DEPENDENCY_TEXT = '-'
+EMPTY_DEPENDENCY_CSV = ' '
+
 
 def print_epics_version_list():
     """
@@ -135,6 +142,7 @@ def print_support_module_dependency_report(support_name_list, exclude_list, epic
     element of the dictionary is a list of the dependencies for the given module.
     Only support modules for MATURITY_PROD are considered since versions numbers
     don't make sense for other software maturities.
+    This routine is a little messy because of all the column formatting needed for the text output.
     :param support_name_list: list of support module names to include in the output
     :type support_name_list: list
     :param exclude_list: list of support module names to exclude from the output
@@ -191,10 +199,14 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
     # The reference names set is used to build a list of unique dependency names.
     referenced_names = set()
 
+    # String used to mark empty (no dependency) columns in the report
+    empty_dependency = EMPTY_DEPENDENCY_CSV if csv_output else EMPTY_DEPENDENCY_TEXT
+
     # Iterate over all the elements in the dictionary. Each element is indexed by the name and the
     # version number, and the contents of each element is the list of supports modules it depends on.
     for key in dep_dict:
 
+        # Determine the maximum length for each dependency (name and version).
         # The key is a tuple consisting of the name and version indexing the dictionary.
         # This will printed in the first and second column of the report.
         len_name_max = max(len_name_max, len(key[0]))
@@ -202,14 +214,15 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
 
         # Split the dependency names and versions in two separate list.
         # The module name is stored in one list and the versions in the other.
+        # This is the place where the information for each dependency is extracted.
         dep_names[key] = [x.name for x in dep_dict[key]]
         dep_versions[key] = [x.version for x in dep_dict[key]]
 
         # Store the names into a set. This eliminates duplicate and empty names.
         referenced_names.update(dep_names[key])
 
-        # Create a list of the maximum (column) length for each dependency.
-        # The list will be used when formatting the output.
+        # Create a list of the maximum column length for each dependency.
+        # This list will be used when formatting the output.
         for name, version in zip(dep_names[key], dep_versions[key]):
             # print name, version
             if name in column_lengths:
@@ -218,7 +231,7 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
                 column_lengths[name] = max(len(name), len(version))
                 # print '-', name, column_lengths[name]
 
-        # Keep track of the maximum name and version length for the dependency
+        # Keep track of the maximum name and version length for the dependencies.
         # Ignore those cases that don't have dependencies.
         try:
             len_dep_name_max = max(len_dep_name_max, len(max(dep_names[key], key=len)))
@@ -226,23 +239,26 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
         except ValueError:
             pass
 
+    # The maximum length of the version column depends also on the column title
+    len_version_max = max(len_version_max, len(VERSION_TITLE))
+
+    # And the length of the first column will also depend on the EPICS version length.
+    # Add the length of the string used to mark no dependencies.
+    first_column_length = max(len_name_max, len(epics_version)) + len(NO_DEP_MARK)
+
     # Sort the set of support module names that are actually used.
     # Support modules that are not used are not included in this set.
-    # Thus, the report will only include columns of relevant dependencies.
+    # Thus, the report will only include columns for relevant dependencies.
     referenced_names = sorted(referenced_names)
-    # print referenced_names
 
+    # Create a list with the length of all the dependencies.
+    # This list will be used while formatting the output.
     column_length_list = [column_lengths[x] for x in referenced_names]
-    # print column_length_list
-
-    # The length of the first column will also depend on the EPICS version length
-    # Add the length of the no dependencies mark at this point
-    first_column_length = max(len_name_max, len(epics_version)) + len(NO_DEP_MARK)
 
     # Print title. The EPICS version will show up in the leftmost columns. This column will be
     # wide enough for the name and version of the support module or ioc.
     print fmt([epics_version], first_column_length, csv_output) + \
-          fmt(['Latest version'], len_version_max, csv_output) + \
+          fmt([VERSION_TITLE], len_version_max, csv_output) + \
           fmt_list(referenced_names, column_length_list, csv_output)
 
     # Print support modules or iocs. There will be one line per item. The first two columns
@@ -265,8 +281,8 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
             try:
                 idx = dep_names[key].index(dep)
                 column_list.append(dep_versions[key][idx])
-            except ValueError:
-                column_list.append('-')  # not a dependency
+            except ValueError:  # no dependency
+                column_list.append(empty_dependency)
 
         print fmt([name], first_column_length, csv_output) + \
               fmt([version], len_version_max, csv_output) + \
