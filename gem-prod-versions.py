@@ -87,7 +87,7 @@ def print_support_module_list(epics_version_list):
         print format_string.format(support_name, support_dict[support_name])
 
 
-def print_ioc_dependency_report(ioc_name_list, exclude_list, epics_version_list, csv_output):
+def print_ioc_dependency_report(ioc_name_list, exclude_list, epics_version_list, csv_output, latest_versions):
     """
     Print a matrix (table) with the dependencies for each IOC.
     The match list can be used to select ioc's matching a list of substrings.
@@ -97,6 +97,7 @@ def print_ioc_dependency_report(ioc_name_list, exclude_list, epics_version_list,
     element of the dictionary is a list of the dependencies for the given ioc.
     Only ioc's with MATURITY_PROD are considered since versions numbers
     don't make sense in maturities other than production.
+
     :param ioc_name_list: list of ioc names to include in the output
     :type ioc_name_list: list
     :param exclude_list: list of strings to match ioc names to exclude from the output
@@ -105,6 +106,8 @@ def print_ioc_dependency_report(ioc_name_list, exclude_list, epics_version_list,
     :type epics_version_list: list
     :param csv_output: CSV output?
     :type csv_output: bool
+    :param latest_versions: print only the latest version for each ioc
+    :type latest_versions: bool
     :return:
     """
     for epics_version in epics_version_list:
@@ -129,13 +132,14 @@ def print_ioc_dependency_report(ioc_name_list, exclude_list, epics_version_list,
                     # print ioc
                     dep_dict[(ioc_name, ioc_version)] = ioc.get_ioc_dependencies()
 
-        _print_dependency_report(dep_dict, epics_version, csv_output)
+        _print_dependency_report(dep_dict, epics_version, csv_output, latest_versions)
 
         if len(epics_list) > 1:
             print '\n'
 
 
-def print_support_module_dependency_report(support_name_list, exclude_list, epics_version_list, csv_output):
+def print_support_module_dependency_report(support_name_list, exclude_list, epics_version_list,
+                                           csv_output, latest_versions):
     """
     Loop over all support modules and versions for all EPICS versions in the EPICS list
     Create a dictionary indexed by the tuple (name, version), where each
@@ -151,6 +155,10 @@ def print_support_module_dependency_report(support_name_list, exclude_list, epic
     :type epics_version_list: list
     :param csv_output: csv output?
     :type csv_output: bool
+    :param csv_output: csv output?
+    :type csv_output: bool
+    :param latest_versions: print only the latest version for each support module
+    :type latest_versions: bool
     :return: None
     """
     for epics_version in epics_version_list:
@@ -168,13 +176,13 @@ def print_support_module_dependency_report(support_name_list, exclude_list, epic
                 sup = SupportModule(support_name, support_version, epics_version, MATURITY_PROD)
                 dep_dict[(support_name, support_version)] = sup.get_support_module_dependencies()
 
-        _print_dependency_report(dep_dict, epics_version, csv_output)
+        _print_dependency_report(dep_dict, epics_version, csv_output, latest_versions)
 
         if len(epics_list) > 1:
             print '\n'
 
 
-def _print_dependency_report(dep_dict, epics_version, csv_output):
+def _print_dependency_report(dep_dict, epics_version, csv_output, latest_versions):
     """
     Auxiliary routine used by print_ioc_dependencies and print_support_module_dependencies
     to do the actual formatting of the dependency table report.
@@ -182,6 +190,10 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
     :type dep_dict: dict
     :param epics_version: EPICS version
     :type epics_version: str
+    :param csv_output: csv output?
+    :type csv_output: bool
+    :param latest_versions: print only the latest version for each ioc or support module
+    :type latest_versions: bool
     :return None
     """
     # These two variables are used to store the list of dependency names and versions
@@ -200,7 +212,7 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
     referenced_names = set()
 
     # String used to mark empty (no dependency) columns in the report
-    empty_dependency = EMPTY_DEPENDENCY_CSV if csv_output else EMPTY_DEPENDENCY_TEXT
+    empty_dependency_mark = EMPTY_DEPENDENCY_CSV if csv_output else EMPTY_DEPENDENCY_TEXT
 
     # Iterate over all the elements in the dictionary. Each element is indexed by the name and the
     # version number, and the contents of each element is the list of supports modules it depends on.
@@ -265,7 +277,7 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
     # will have the name and version, followed by the versions of the dependency versions.
     # Only support modules and ioc's with dependencies will be listed in the output.
     # for name, version in sorted(dep_dict.keys()):
-    for name, version in sort_by_name_and_version(dep_dict.keys()):
+    for name, version in sort_by_name_and_version(dep_dict.keys(), latest_versions):
 
         # The dictionary key is the tuple (name, version)
         key = (name, version)
@@ -282,7 +294,7 @@ def _print_dependency_report(dep_dict, epics_version, csv_output):
                 idx = dep_names[key].index(dep)
                 column_list.append(dep_versions[key][idx])
             except ValueError:  # no dependency
-                column_list.append(empty_dependency)
+                column_list.append(empty_dependency_mark)
 
         print fmt([name], first_column_length, csv_output) + \
               fmt([version], len_version_max, csv_output) + \
@@ -433,6 +445,12 @@ def command_line_arguments(argv):
                         default=False,
                         help='print dependency report in csv format')
 
+    parser.add_argument('-l', '--latest-versions',
+                        action='store_true',
+                        dest='latest',
+                        default=False,
+                        help='list only the latest version for each support package')
+
     parser.add_argument('-t', '--test',
                         action='store',
                         nargs=1,
@@ -455,11 +473,13 @@ if __name__ == '__main__':
     # args = command_line_arguments(['-t', test_dir, '--qi', '-e', 'all'])
     # args = command_line_arguments(['-t', test_dir, '-i'])
     # args = command_line_arguments(['-t', test_dir])
+    # args = command_line_arguments(['-t', test_dir, '-l'])
     # args = command_line_arguments(['-t', test_dir, '--csv'])
     # args = command_line_arguments(['-t', test_dir, 'astlib', 'motor'])
-    # args = command_line_arguments(['-t', test_dir, '-i', 'crcs', 'motor'])
+    # args = command_line_arguments(['-t', test_dir, 'astlib', 'motor', '-l'])
+    # args = command_line_arguments(['-t', test_dir, '-i', 'crcs', 'gis'])
+    # args = command_line_arguments(['-t', test_dir, '-i', 'crcs', 'gis', '-l'])
     # args = command_line_arguments(['-t', test_dir, '-d', 'timelib', 'astlib', 'motor'])
-    # args = command_line_arguments(['-t', test_dir, '-d', 'timelib', 'astlib'])
 
     args = command_line_arguments(sys.argv[1:])
 
@@ -509,8 +529,8 @@ if __name__ == '__main__':
     else:
         # report matrix
         if args.area == AREA_IOC:
-            print_ioc_dependency_report(args.name, args.exclude, epics_list, args.csv)
+            print_ioc_dependency_report(args.name, args.exclude, epics_list, args.csv, args.latest)
         else:
-            print_support_module_dependency_report(args.name, args.exclude, epics_list, args.csv)
+            print_support_module_dependency_report(args.name, args.exclude, epics_list, args.csv, args.latest)
 
     exit(0)
