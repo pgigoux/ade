@@ -376,7 +376,7 @@ def command_line_arguments(argv):
 
     # Define text that will be printed at the end of the '-h' option
     epilog_text = """Print version information of ioc\'s and support packages in the prod directory.""" + \
-                  """If no arguments are supplied, the dependency matrix for support modules is generated. """ + \
+                  """ If no arguments are supplied, the dependency matrix for support modules is generated. """ + \
                   """ The version of EPICS defined by GEM_EPICS_RELEASE is used by default."""
 
     parser = ArgumentParser(epilog=epilog_text)
@@ -439,17 +439,18 @@ def command_line_arguments(argv):
                         default=False,
                         help='list support modules and ioc\'s in prod that depend on one or more modules')
 
-    parser.add_argument('--csv',
-                        action='store_true',
-                        dest='csv',
-                        default=False,
-                        help='print dependency report in csv format')
 
     parser.add_argument('-l', '--latest-versions',
                         action='store_true',
                         dest='latest',
                         default=False,
-                        help='list only the latest version for each support package')
+                        help='list only the latest version for each support package or ioc')
+
+    parser.add_argument('--csv',
+                        action='store_true',
+                        dest='csv',
+                        default=False,
+                        help='print dependency report in csv format')
 
     parser.add_argument('-t', '--test',
                         action='store',
