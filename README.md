@@ -1,5 +1,5 @@
 # ade
-ADE 1 and 2 scripts
+ADE 1 scripts
 
 ## Dependencies
 
